@@ -1,0 +1,27 @@
+{
+  "name": "badag",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "type": "module",
+  "scripts": {
+    "typecheck": "bun check",
+    "check": "ultracite check",
+    "fix": "ultracite fix",
+    "prepare": "lefthook install"
+  },
+  "devDependencies": {
+    "@shadcn/lint": "^0.2.0",
+    "@types/bun": "latest",
+    "lefthook": "^2.2.2",
+    "oxfmt": "^0.73.0",
+    "oxlint": "^1.86.0",
+    "ultracite": "8.0.1"
+  },
+  "peerDependencies": {
+    "typescript": "^6.0.3"
+  },
+  "packageManager": ">=bun@1.4.3"
+}

@@ -1,0 +1,432 @@
+{
+  "version": "6",
+  "dialect": "sqlite",
+  "id": "ebdf8c28-9023-4d20-a833-49f7a4d55c13",
+  "prevId": "00000000-0000-0000-0000-000000000000",
+  "tables": {
+    "dag_edges": {
+      "name": "dag_edges",
+      "columns": {
+        "dag_id": {
+          "name": "dag_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "from_task_id": {
+          "name": "from_task_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "to_task_id": {
+          "name": "to_task_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(unixepoch() * 1000)"
+        }
+      },
+      "indexes": {
+        "dag_edges_downstream_idx": {
+          "name": "dag_edges_downstream_idx",
+          "columns": [
+            "dag_id",
+            "from_task_id"
+          ],
+          "isUnique": false
+        },
+        "dag_edges_upstream_idx": {
+          "name": "dag_edges_upstream_idx",
+          "columns": [
+            "dag_id",
+            "to_task_id"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "dag_edges_from_task_fk": {
+          "name": "dag_edges_from_task_fk",
+          "tableFrom": "dag_edges",
+          "tableTo": "dag_tasks",
+          "columnsFrom": [
+            "dag_id",
+            "from_task_id"
+          ],
+          "columnsTo": [
+            "dag_id",
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "dag_edges_to_task_fk": {
+          "name": "dag_edges_to_task_fk",
+          "tableFrom": "dag_edges",
+          "tableTo": "dag_tasks",
+          "columnsFrom": [
+            "dag_id",
+            "to_task_id"
+          ],
+          "columnsTo": [
+            "dag_id",
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "dag_edges_dag_id_from_task_id_to_task_id_pk": {
+          "columns": [
+            "dag_id",
+            "from_task_id",
+            "to_task_id"
+          ],
+          "name": "dag_edges_dag_id_from_task_id_to_task_id_pk"
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "dag_edges_no_self_loop": {
+          "name": "dag_edges_no_self_loop",
+          "value": "\"dag_edges\".\"from_task_id\" <> \"dag_edges\".\"to_task_id\""
+        }
+      }
+    },
+    "dag_runs": {
+      "name": "dag_runs",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "dag_id": {
+          "name": "dag_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "current_task_id": {
+          "name": "current_task_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'running'"
+        },
+        "trigger_type": {
+          "name": "trigger_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'manual'"
+        },
+        "run_key": {
+          "name": "run_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "input": {
+          "name": "input",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "output": {
+          "name": "output",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "started_at": {
+          "name": "started_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "finished_at": {
+          "name": "finished_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(unixepoch() * 1000)"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(unixepoch() * 1000)"
+        }
+      },
+      "indexes": {
+        "dag_runs_run_key_idx": {
+          "name": "dag_runs_run_key_idx",
+          "columns": [
+            "dag_id",
+            "run_key"
+          ],
+          "isUnique": true
+        },
+        "dag_runs_status_created_idx": {
+          "name": "dag_runs_status_created_idx",
+          "columns": [
+            "status",
+            "created_at"
+          ],
+          "isUnique": false
+        },
+        "dag_runs_dag_created_idx": {
+          "name": "dag_runs_dag_created_idx",
+          "columns": [
+            "dag_id",
+            "created_at"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "dag_runs_dag_id_dags_id_fk": {
+          "name": "dag_runs_dag_id_dags_id_fk",
+          "tableFrom": "dag_runs",
+          "tableTo": "dags",
+          "columnsFrom": [
+            "dag_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "dag_runs_current_task_id_dag_tasks_id_fk": {
+          "name": "dag_runs_current_task_id_dag_tasks_id_fk",
+          "tableFrom": "dag_runs",
+          "tableTo": "dag_tasks",
+          "columnsFrom": [
+            "current_task_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "dag_tasks": {
+      "name": "dag_tasks",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "dag_id": {
+          "name": "dag_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "key": {
+          "name": "key",
+          "type": "text(100)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "name": {
+          "name": "name",
+          "type": "text(150)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "type": {
+          "name": "type",
+          "type": "text(50)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "config": {
+          "name": "config",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'{}'"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(unixepoch() * 1000)"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(unixepoch() * 1000)"
+        }
+      },
+      "indexes": {
+        "dag_tasks_dag_key_idx": {
+          "name": "dag_tasks_dag_key_idx",
+          "columns": [
+            "dag_id",
+            "key"
+          ],
+          "isUnique": true
+        },
+        "dag_tasks_dag_id_id_idx": {
+          "name": "dag_tasks_dag_id_id_idx",
+          "columns": [
+            "dag_id",
+            "id"
+          ],
+          "isUnique": true
+        },
+        "dag_tasks_dag_type_idx": {
+          "name": "dag_tasks_dag_type_idx",
+          "columns": [
+            "dag_id",
+            "type"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "dag_tasks_dag_id_dags_id_fk": {
+          "name": "dag_tasks_dag_id_dags_id_fk",
+          "tableFrom": "dag_tasks",
+          "tableTo": "dags",
+          "columnsFrom": [
+            "dag_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "dags": {
+      "name": "dags",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text(100)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(unixepoch() * 1000)"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(unixepoch() * 1000)"
+        }
+      },
+      "indexes": {
+        "dags_name_idx": {
+          "name": "dags_name_idx",
+          "columns": [
+            "name"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    }
+  },
+  "views": {},
+  "enums": {},
+  "_meta": {
+    "schemas": {},
+    "tables": {},
+    "columns": {}
+  },
+  "internal": {
+    "indexes": {}
+  }
+}

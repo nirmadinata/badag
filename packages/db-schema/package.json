@@ -1,0 +1,12 @@
+{
+    "name": "@badag/db-schema",
+    "private": true,
+    "type": "module",
+    "exports": {
+        "./main-db": "./src/main-db/index.ts",
+        "./orchestrator-db": "./src/orchestrator-db/index.ts"
+    },
+    "peerDependencies": {
+        "drizzle-orm": "^0.45.4"
+    }
+}

@@ -1,0 +1,33 @@
+{
+    "name": "@badag/app",
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "dev": "cf dev",
+        "build": "cf build",
+        "test": "bun test --pass-with-no-tests",
+        "deploy": "cf deploy",
+        "typecheck": "cf workers types && tsc",
+        "db:generate:main": "drizzle-kit generate --dialect sqlite --driver durable-sqlite --schema node_modules/@badag/db-schema/src/main-db/schema.ts --out migrations/main-db",
+        "db:generate:do": "drizzle-kit generate --dialect sqlite --driver durable-sqlite --schema node_modules/@badag/db-schema/src/orchestrator-db/schema.ts --out migrations/orchestrator-db",
+        "db:generate": "bun db:generate:main && bun db:generate:do",
+        "db:clean-generate": "rm -rf migrations && bun db:generate:main && bun db:generate:do",
+        "db:migrate": "cf d1 migrations apply 00000000000000000000000000000000 --local --persist-to .cloudflare/state --dir migrations/main-db"
+    },
+    "dependencies": {
+        "@badag/db-schema": "workspace:*",
+        "@scalar/hono-api-reference": "^0.12.13",
+        "@valibot/to-json-schema": "^1.8.0",
+        "drizzle-orm": "^0.45.4",
+        "hono": "^4.13.13",
+        "hono-openapi": "^1.5.0",
+        "valibot": "^1.5.0"
+    },
+    "devDependencies": {
+        "@cloudflare/vite-plugin": "beta",
+        "cf": "^1.0.0-beta.21",
+        "drizzle-kit": "^0.31.11",
+        "typescript": "^7.0.2",
+        "vite": "^8.3.0"
+    }
+}

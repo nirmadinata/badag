@@ -1,0 +1,479 @@
+import { hashTaskId } from "../hash/hash";
+import type { TaskFn, TaskParamOutput } from "../task/types";
+import type { ChainProblem, NextEdges, NextSignatures } from "./chain";
+import { DAGTask, isDefinition, normalizeTasks, stateOf } from "./dag-task";
+import type { TaskDefinition, TaskLike, TaskOrTasks } from "./dag-task";
+import type { DAGJson, TaskJson } from "./types";
+
+/**
+ * A task is ready once it is incomplete and every upstream task is done.
+ */
+function isReady(task: DAGTask, completed: ReadonlySet<string>): boolean {
+    if (completed.has(task.id)) {
+        return false;
+    }
+
+    for (const upstream of task.upstream) {
+        if (!completed.has(upstream.id)) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+type TaskNameIndex = string;
+
+type TaskIdIndex = string;
+
+/**
+ * An Airflow-inspired directed acyclic graph.
+ *
+ * `DagName`, `Signatures`, and `Edges` are compile-time bookkeeping for
+ * `chain()`: the returned DAG carries the registrations and edges added by the
+ * call. Keep calls fluent (or keep the returned value) for static validation;
+ * the runtime checks cover every wiring path.
+ */
+export class DAG<
+    DagName extends string = string,
+    Signatures = Record<never, never>,
+    Edges = Record<never, never>,
+> {
+    readonly #name: DagName;
+    // Same task objects, two indexes: name drives public lookup and order;
+    // task ID drives identity and duplicate detection.
+    readonly #tasks = new Map<TaskNameIndex, DAGTask>();
+    readonly #tasksById = new Map<TaskIdIndex, DAGTask>();
+
+    constructor(name: DagName) {
+        if (!name.trim()) {
+            throw new Error("DAG name cannot be empty");
+        }
+
+        this.#name = name;
+    }
+
+    /**
+     * Name supplied when the DAG was constructed.
+     */
+    get name(): DagName {
+        return this.#name;
+    }
+
+    /**
+     * Registered tasks keyed by task name, in registration order.
+     */
+    get tasks(): ReadonlyMap<TaskNameIndex, DAGTask> {
+        return this.#tasks;
+    }
+
+    /**
+     * Look up a registered task by name.
+     *
+     * The returned task is typed with the queried name: tasks are keyed by
+     * their own `name`, so any hit carries that literal type.
+     */
+    getTask<const Name extends TaskNameIndex>(
+        name: Name
+    ): DAGTask<Name> | undefined {
+        // SAFETY: #tasks is keyed by task.name, so a hit is always a DAGTask<Name>.
+        return this.#tasks.get(name) as DAGTask<Name> | undefined;
+    }
+
+    /**
+     * Add an edge: from -> to.
+     *
+     * Each side accepts a `DAGTask` handle or a definition. Definitions are
+     * registered in this DAG on first use.
+     */
+    addDependency(from: TaskLike, to: TaskLike): void {
+        this.addDependencies(from, to);
+    }
+
+    /**
+     * Add every edge from `upstream` to `downstream`.
+     *
+     * The call is transactional: if any definition or edge is rejected, the
+     * tasks and edges added by this call are rolled back.
+     */
+    addDependencies(upstream: TaskOrTasks, downstream: TaskOrTasks): void {
+        const froms = normalizeTasks(upstream);
+        const tos = normalizeTasks(downstream);
+
+        if (froms.length === 0 || tos.length === 0) {
+            return;
+        }
+
+        for (const task of froms) {
+            this.#assertHandleBelongs(task);
+        }
+
+        for (const task of tos) {
+            this.#assertHandleBelongs(task);
+        }
+
+        const inserted = this.#registerDefinitions(
+            [...froms, ...tos].filter(isDefinition)
+        );
+
+        try {
+            const fromTasks = froms.map((task) => this.#lookup(task));
+            const toTasks = tos.map((task) => this.#lookup(task));
+
+            this.#addEdges([fromTasks, toTasks]);
+        } catch (error) {
+            this.#removeTasks(inserted);
+            throw error;
+        }
+    }
+
+    /**
+     * Register wiring sets and connect consecutive sets.
+     *
+     * dag.chain(a, b, c)       => a -> b -> c
+     * dag.chain(a, [b, c], d)  => a -> b, a -> c, b -> d, c -> d
+     *
+     * Wiring sets may contain `DAGTask` handles or definitions. Definitions
+     * are registered in this DAG before linking (validated as one batch); a
+     * single wiring set registers tasks without adding edges. Existing edges
+     * are skipped, so repeated calls are idempotent.
+     *
+     * The type-level state carried by the returned DAG rejects duplicate
+     * definitions and edges that close a cycle. Keep the chain fluent (or keep
+     * the returned value) for those checks to apply.
+     */
+    chain<const Groups extends readonly TaskOrTasks[]>(
+        ...groups: Groups &
+            (ChainProblem<DagName, Signatures, Edges, Groups> extends true
+                ? unknown
+                : ChainProblem<DagName, Signatures, Edges, Groups>)
+    ): DAG<
+        DagName,
+        NextSignatures<DagName, Signatures, Groups>,
+        NextEdges<Edges, Groups>
+    >;
+    chain(...groups: TaskOrTasks[]): this {
+        const normalized = groups.map((group) => normalizeTasks(group));
+
+        for (const group of normalized) {
+            for (const task of group) {
+                this.#assertHandleBelongs(task);
+            }
+        }
+
+        const inserted = this.#registerDefinitions(
+            normalized.flat().filter(isDefinition)
+        );
+
+        try {
+            const resolved = normalized.map((group) =>
+                group.map((task) => this.#lookup(task))
+            );
+
+            this.#addEdges(resolved);
+        } catch (error) {
+            this.#removeTasks(inserted);
+            throw error;
+        }
+
+        return this;
+    }
+
+    /**
+     * Return tasks in a valid topological execution order.
+     * Throws if the graph is cyclic.
+     */
+    topologicalSort(): DAGTask[] {
+        const remainingDeps = new Map<DAGTask, number>();
+        const ready: DAGTask[] = [];
+
+        for (const task of this.#tasks.values()) {
+            remainingDeps.set(task, task.upstream.size);
+
+            if (task.upstream.size === 0) {
+                ready.push(task);
+            }
+        }
+
+        const order: DAGTask[] = [];
+        let index = 0;
+
+        while (index < ready.length) {
+            const task = ready[index];
+            index += 1;
+
+            order.push(task);
+            this.#releaseDownstream(task, remainingDeps, ready);
+        }
+
+        if (order.length !== this.#tasks.size) {
+            throw new Error(`DAG "${this.#name}" contains a cycle`);
+        }
+
+        return order;
+    }
+
+    /**
+     * Decrement the dependency count of every downstream task, queueing the
+     * ones that become unblocked.
+     */
+    #releaseDownstream(
+        task: DAGTask,
+        remainingDeps: Map<DAGTask, number>,
+        ready: DAGTask[]
+    ): void {
+        for (const downstream of task.downstream) {
+            const remaining = remainingDeps.get(downstream);
+
+            if (remaining === undefined) {
+                throw new Error(
+                    `Task "${downstream.name}" is not registered in DAG "${this.#name}"`
+                );
+            }
+
+            const nextRemaining = remaining - 1;
+
+            remainingDeps.set(downstream, nextRemaining);
+
+            if (nextRemaining === 0) {
+                ready.push(downstream);
+            }
+        }
+    }
+
+    /**
+     * Get tasks whose dependencies are all in the completed set.
+     */
+    getReadyTasks(completed: ReadonlySet<string>): DAGTask[] {
+        const ready: DAGTask[] = [];
+
+        for (const task of this.#tasks.values()) {
+            if (isReady(task, completed)) {
+                ready.push(task);
+            }
+        }
+
+        return ready;
+    }
+
+    /**
+     * Return a JSON-safe snapshot of the graph.
+     *
+     * Tasks keep their task IDs, names, descriptions, trigger rules, and
+     * configs; edges are listed by task name. Functions are omitted.
+     * `JSON.stringify(dag)` calls this method, so `config` values must be
+     * JSON-serializable for that conversion.
+     */
+    toJSON(): DAGJson {
+        return {
+            name: this.#name,
+            tasks: [...this.#tasks.values()].map((task) =>
+                this.#taskJson(task)
+            ),
+        };
+    }
+
+    /** Snapshot one task, omitting `fn` and absent optional fields. */
+    #taskJson(task: DAGTask): TaskJson {
+        const base = {
+            id: task.id,
+            name: task.name,
+            triggerRule: task.triggerRule,
+            upstream: [...task.upstream].map((upstream) => upstream.name),
+            downstream: [...task.downstream].map(
+                (downstream) => downstream.name
+            ),
+        };
+
+        const withDescription =
+            task.description === undefined
+                ? base
+                : { ...base, description: task.description };
+
+        if (task.config === undefined) {
+            return withDescription;
+        }
+
+        return { ...withDescription, config: task.config };
+    }
+
+    #assertHandleBelongs(task: TaskLike): void {
+        if (task instanceof DAGTask && this.#tasksById.get(task.id) !== task) {
+            throw new Error("Both tasks must belong to this DAG");
+        }
+    }
+
+    /**
+     * Register unseen definitions as one batch.
+     *
+     * Validation runs over the whole batch before any task is inserted, and a
+     * definition with the same task ID is reused.
+     */
+    #registerDefinitions(
+        definitions: readonly TaskDefinition[]
+    ): readonly DAGTask[] {
+        const pendingNames = new Set<string>();
+        const pendingById = new Map<string, DAGTask>();
+        const pending: DAGTask[] = [];
+
+        for (const definition of definitions) {
+            // SAFETY: definitions are produced by task(), which ties the
+            // callback context to the literal task name.
+            const candidate = new DAGTask(
+                this,
+                definition as TaskParamOutput<string, TaskFn<string>>
+            );
+
+            const existing = this.#tasksById.get(candidate.id);
+
+            if (existing !== undefined) {
+                if (existing.name !== candidate.name) {
+                    throw new Error(`Task ID "${candidate.id}" already exists`);
+                }
+
+                continue;
+            }
+
+            const pendingTask = pendingById.get(candidate.id);
+
+            if (pendingTask !== undefined) {
+                if (pendingTask.name !== candidate.name) {
+                    throw new Error(`Task ID "${candidate.id}" already exists`);
+                }
+
+                continue;
+            }
+
+            if (
+                this.#tasks.has(candidate.name) ||
+                pendingNames.has(candidate.name)
+            ) {
+                throw new Error(
+                    `Task "${candidate.name}" already exists in DAG "${this.#name}"`
+                );
+            }
+
+            pendingNames.add(candidate.name);
+            pendingById.set(candidate.id, candidate);
+            pending.push(candidate);
+        }
+
+        for (const task of pending) {
+            this.#tasks.set(task.name, task);
+            this.#tasksById.set(task.id, task);
+        }
+
+        return pending;
+    }
+
+    /** Remove tasks inserted by a failed batch; reused tasks are untouched. */
+    #removeTasks(tasks: readonly DAGTask[]): void {
+        for (const task of tasks) {
+            if (this.#tasksById.get(task.id) === task) {
+                this.#tasks.delete(task.name);
+                this.#tasksById.delete(task.id);
+            }
+        }
+    }
+
+    /** Resolve a handle or definition to its canonical task by task ID. */
+    #lookup(task: TaskLike): DAGTask {
+        const id =
+            task instanceof DAGTask ? task.id : hashTaskId(task.name, task.fn);
+
+        const registered = this.#tasksById.get(id);
+
+        if (registered === undefined) {
+            throw new Error(
+                `Task "${task.name}" is not registered in DAG "${this.#name}"`
+            );
+        }
+
+        return registered;
+    }
+
+    /**
+     * Validate and write every edge between consecutive wiring sets.
+     *
+     * Planning runs over the whole batch first, so a rejected edge leaves the
+     * graph unchanged.
+     */
+    #addEdges(groups: readonly (readonly DAGTask[])[]): void {
+        const planned = new Map<DAGTask, Set<DAGTask>>();
+
+        for (let index = 1; index < groups.length; index += 1) {
+            const froms = groups[index - 1];
+            const tos = groups[index];
+
+            for (const from of froms) {
+                for (const to of tos) {
+                    if (from === to) {
+                        throw new Error("A task cannot depend on itself");
+                    }
+
+                    if (from.downstream.has(to)) {
+                        continue;
+                    }
+
+                    if (this.#hasPathIn(planned, to, from)) {
+                        throw new Error(
+                            `Dependency "${from.name}" -> "${to.name}" creates a cycle`
+                        );
+                    }
+
+                    const next = planned.get(from) ?? new Set(from.downstream);
+                    next.add(to);
+                    planned.set(from, next);
+                }
+            }
+        }
+
+        for (let index = 1; index < groups.length; index += 1) {
+            const froms = groups[index - 1];
+            const tos = groups[index];
+
+            for (const from of froms) {
+                for (const to of tos) {
+                    if (from.downstream.has(to)) {
+                        continue;
+                    }
+
+                    stateOf(from).downstream.add(to);
+                    stateOf(to).upstream.add(from);
+                }
+            }
+        }
+    }
+
+    #hasPathIn(
+        planned: ReadonlyMap<DAGTask, ReadonlySet<DAGTask>>,
+        from: DAGTask,
+        target: DAGTask
+    ): boolean {
+        const visited = new Set<DAGTask>([from]);
+        const pending: DAGTask[] = [from];
+        let index = 0;
+
+        while (index < pending.length) {
+            const current = pending[index];
+            index += 1;
+
+            if (current === target) {
+                return true;
+            }
+
+            const downstream = planned.get(current) ?? current.downstream;
+
+            for (const next of downstream) {
+                if (visited.has(next)) {
+                    continue;
+                }
+
+                visited.add(next);
+                pending.push(next);
+            }
+        }
+
+        return false;
+    }
+}

@@ -1,0 +1,3 @@
+# Task identity is content-derived
+
+Task IDs are derived from a task definition's name and callback source rather than assigned per DAG or per registration. Definitions with the same name and callback source share one task ID across DAGs, making registration idempotent by task ID, while task names remain the unique human-readable lookup name inside a DAG. The trade-off is deliberate: changing the callback source creates a new identity. A task ID that matches an existing task with the same name reuses it; a match with a different name is rejected as a collision (`Task ID "<id>" already exists`).

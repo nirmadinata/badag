@@ -1,41 +1,22 @@
-// oxlint-disable anti-slop/no-unknown-returns no-unused-private-class-members
+export { DAG } from "./core/dag/dag";
 
-type FnType = (...args: unknown[]) => unknown;
+export { crossDownstream } from "./core/dag/dag-task";
 
-interface CommonConfigType {
-    timeout_ms?: number;
-    [key: string]: unknown;
-}
+export type { DAGTask, TaskLike, TaskOrTasks } from "./core/dag/dag-task";
 
-export interface TaskParamInput<TaskName extends string, Fn extends FnType> {
-    name: TaskName;
-    fn: Fn;
-    config?: CommonConfigType;
-}
+export type { DAGJson, TaskJson } from "./core/dag/types";
 
-export interface TaskParamOutput<TaskName extends string, Fn extends FnType> {
-    id: string;
-    name: TaskName;
-    fn: Fn;
-    config?: CommonConfigType;
-}
+export { task } from "./core/task/task";
 
-export type DefineTask = <TaskName extends string, Fn extends FnType>(
-    params: TaskParamInput<TaskName, Fn>
-) => TaskParamOutput<TaskName, Fn>;
+export { TRIGGER_RULE_ENUM } from "./core/trigger-rule";
 
-export const defineTask: DefineTask = (payload) => ({
-    ...payload,
-    id: crypto.randomUUID(),
-});
+export type { TriggerRule } from "./core/trigger-rule";
 
-/**
- * TODO: do for define DAG
- */
-export class DAG {
-    #name: string;
-
-    constructor(name: string) {
-        this.#name = name;
-    }
-}
+export type {
+    CreateTask,
+    TaskConfig,
+    TaskContext,
+    TaskFn,
+    TaskParamInput,
+    TaskParamOutput,
+} from "./core/task/types";

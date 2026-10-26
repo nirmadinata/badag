@@ -1,14 +1,14 @@
-# Agent skills
+## Agent skills
 
-## Issue tracker
+### Issue tracker
 
 Issues and specs live as GitHub issues in `nirmadinata/badag`, driven through the `gh` CLI. See `docs/agents/issue-tracker.md`.
 
-## Triage labels
+### Triage labels
 
 The five canonical triage roles, each label string equal to its role name (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`). See `docs/agents/triage-labels.md`.
 
-## Domain docs
+### Domain docs
 
 Single-context: one `GLOSSARY.md` at the repo root plus `docs/adr/`. See `docs/agents/domain.md`.
 

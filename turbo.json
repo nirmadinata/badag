@@ -3,7 +3,7 @@
     "tasks": {
         "build": {
             "dependsOn": ["^build"],
-            "outputs": [".cloudflare/output/**"]
+            "outputs": [".cloudflare/output/**", "dist"]
         },
         "test": {
             "dependsOn": ["^build"],

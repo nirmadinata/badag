@@ -1,9 +1,12 @@
-import { hashTaskId } from "../hash/hash";
-import type { TaskFn, TaskParamOutput } from "../task/types";
+import { hashTaskId } from "@/core/hash/hash";
+import { taskBehaviorSource } from "@/core/task/identity";
+import { TASK_KIND_ENUM } from "@/core/task/kind";
+import type { TaskKind } from "@/core/task/kind";
+
 import type { ChainProblem, NextEdges, NextSignatures } from "./chain";
 import { DAGTask, isDefinition, normalizeTasks, stateOf } from "./dag-task";
 import type { TaskDefinition, TaskLike, TaskOrTasks } from "./dag-task";
-import type { DAGJson, TaskJson } from "./types";
+import type { DAGJson, TaskJson, TaskJsonBase } from "./types";
 
 /**
  * A task is ready once it is incomplete and every upstream task is done.
@@ -25,6 +28,35 @@ function isReady(task: DAGTask, completed: ReadonlySet<string>): boolean {
 type TaskNameIndex = string;
 
 type TaskIdIndex = string;
+
+/** Common serialized fields, omitting absent optional metadata. */
+function taskJsonBase(task: DAGTask): Omit<TaskJsonBase<TaskKind>, "kind"> {
+    const base = {
+        id: task.id,
+        name: task.name,
+        triggerRule: task.triggerRule,
+        upstream: [...task.upstream].map((upstream) => upstream.name),
+        downstream: [...task.downstream].map((downstream) => downstream.name),
+    };
+
+    if (task.description === undefined && task.config === undefined) {
+        return base;
+    }
+
+    if (task.description === undefined) {
+        return { ...base, config: task.config };
+    }
+
+    if (task.config === undefined) {
+        return { ...base, description: task.description };
+    }
+
+    return {
+        ...base,
+        description: task.description,
+        config: task.config,
+    };
+}
 
 /**
  * An Airflow-inspired directed acyclic graph.
@@ -259,10 +291,10 @@ export class DAG<
     /**
      * Return a JSON-safe snapshot of the graph.
      *
-     * Tasks keep their task IDs, names, descriptions, trigger rules, and
-     * configs; edges are listed by task name. Functions are omitted.
-     * `JSON.stringify(dag)` calls this method, so `config` values must be
-     * JSON-serializable for that conversion.
+     * Tasks keep their task IDs, names, kinds, descriptions, trigger rules,
+     * configs, and serializable kind-specific fields; edges are listed by task
+     * name. Functions are omitted. `JSON.stringify(dag)` calls this method, so
+     * `config` values must be JSON-serializable for that conversion.
      */
     toJSON(): DAGJson {
         return {
@@ -273,28 +305,52 @@ export class DAG<
         };
     }
 
-    /** Snapshot one task, omitting `fn` and absent optional fields. */
+    /** Snapshot one task, omitting functions and absent optional fields. */
     #taskJson(task: DAGTask): TaskJson {
-        const base = {
-            id: task.id,
-            name: task.name,
-            triggerRule: task.triggerRule,
-            upstream: [...task.upstream].map((upstream) => upstream.name),
-            downstream: [...task.downstream].map(
-                (downstream) => downstream.name
-            ),
-        };
+        const base = taskJsonBase(task);
+        const { definition } = task;
 
-        const withDescription =
-            task.description === undefined
-                ? base
-                : { ...base, description: task.description };
+        switch (definition.kind) {
+            case TASK_KIND_ENUM.Sensor: {
+                const sensor = {
+                    ...base,
+                    kind: TASK_KIND_ENUM.Sensor,
+                };
 
-        if (task.config === undefined) {
-            return withDescription;
+                return definition.pokeIntervalMs === undefined
+                    ? sensor
+                    : { ...sensor, pokeIntervalMs: definition.pokeIntervalMs };
+            }
+
+            case TASK_KIND_ENUM.Delay: {
+                return {
+                    ...base,
+                    kind: TASK_KIND_ENUM.Delay,
+                    durationMs: definition.durationMs,
+                };
+            }
+
+            case TASK_KIND_ENUM.Branch: {
+                return { ...base, kind: TASK_KIND_ENUM.Branch };
+            }
+
+            case TASK_KIND_ENUM.ShortCircuit: {
+                return { ...base, kind: TASK_KIND_ENUM.ShortCircuit };
+            }
+
+            case TASK_KIND_ENUM.Trigger: {
+                return {
+                    ...base,
+                    kind: TASK_KIND_ENUM.Trigger,
+                    dagName: definition.dagName,
+                    waitForCompletion: definition.waitForCompletion,
+                };
+            }
+
+            default: {
+                return { ...base, kind: TASK_KIND_ENUM.Task };
+            }
         }
-
-        return { ...withDescription, config: task.config };
     }
 
     #assertHandleBelongs(task: TaskLike): void {
@@ -317,12 +373,8 @@ export class DAG<
         const pending: DAGTask[] = [];
 
         for (const definition of definitions) {
-            // SAFETY: definitions are produced by task(), which ties the
-            // callback context to the literal task name.
-            const candidate = new DAGTask(
-                this,
-                definition as TaskParamOutput<string, TaskFn<string>>
-            );
+            // SAFETY: task factories type kind-specific callbacks against this name.
+            const candidate = new DAGTask(this, definition);
 
             const existing = this.#tasksById.get(candidate.id);
 
@@ -379,7 +431,9 @@ export class DAG<
     /** Resolve a handle or definition to its canonical task by task ID. */
     #lookup(task: TaskLike): DAGTask {
         const id =
-            task instanceof DAGTask ? task.id : hashTaskId(task.name, task.fn);
+            task instanceof DAGTask
+                ? task.id
+                : hashTaskId(task.name, taskBehaviorSource(task));
 
         const registered = this.#tasksById.get(id);
 
@@ -477,3 +531,13 @@ export class DAG<
         return false;
     }
 }
+
+/**
+ * Create a DAG without `new`.
+ *
+ * Keeps the literal name in the returned type, so `chain()` checks apply
+ * exactly as they do on a constructed `DAG`.
+ */
+export const createDAG = <const DagName extends string>(
+    name: DagName
+): DAG<DagName> => new DAG(name);

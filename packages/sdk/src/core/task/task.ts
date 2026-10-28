@@ -1,28 +1,28 @@
-import { DEFAULT_TRIGGER_RULE } from "../trigger-rule";
+import { TASK_KIND_ENUM } from "./kind";
+import { taskMetadata } from "./metadata";
+import { taskSchemas } from "./schemas";
 import { normalizeTaskName } from "./task-name";
-import type { AnyTaskFn, CreateTask, TaskParamOutput } from "./types";
+import type {
+    AnySchema,
+    AnyTaskFn,
+    CreateTask,
+    TaskParamOutput,
+} from "./types";
 
 /**
- * Build a task definition outside any DAG.
+ * Build a regular task definition outside any DAG.
  *
  * Names are trimmed and validated here. Task IDs are assigned only when a
  * definition is registered as a `DAGTask`.
  */
 export const task: CreateTask = (name, params) => {
     const definition = {
-        fn: params.fn,
+        kind: TASK_KIND_ENUM.Task,
         name: normalizeTaskName(name),
-        triggerRule: params.triggerRule ?? DEFAULT_TRIGGER_RULE,
-    } satisfies TaskParamOutput<string, AnyTaskFn>;
+        fn: params.fn,
+        ...taskMetadata(params),
+        ...taskSchemas(params),
+    } satisfies TaskParamOutput<string, AnyTaskFn, AnySchema, AnySchema>;
 
-    const withDescription =
-        params.description === undefined
-            ? definition
-            : { ...definition, description: params.description };
-
-    if (params.config === undefined) {
-        return withDescription;
-    }
-
-    return { ...withDescription, config: params.config };
+    return definition;
 };

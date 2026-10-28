@@ -1,23 +1,19 @@
-import { hashTaskId } from "../hash/hash";
-import { assertTaskName } from "../task/task-name";
+import { hashTaskId } from "@/core/hash/hash";
+import { taskBehaviorSource } from "@/core/task/identity";
+import { assertTaskName } from "@/core/task/task-name";
 import type {
-    AnyTaskFn,
+    AnyTaskDefinition,
+    RegisteredTaskDefinition,
     TaskConfig,
-    TaskFn,
-    TaskParamOutput,
-} from "../task/types";
-import type { TriggerRule } from "../trigger-rule";
-import { DEFAULT_TRIGGER_RULE } from "../trigger-rule";
+    TaskKind,
+} from "@/core/task/types";
+import type { TriggerRule } from "@/core/trigger-rule";
+import { DEFAULT_TRIGGER_RULE } from "@/core/trigger-rule";
+
 import type { DAG } from "./dag";
 
 /** Structural definition shape accepted by DAG registration. */
-export interface TaskDefinition {
-    readonly name: string;
-    readonly fn: AnyTaskFn;
-    readonly description?: string;
-    readonly config?: TaskConfig;
-    readonly triggerRule: TriggerRule;
-}
+export type TaskDefinition = AnyTaskDefinition;
 
 /**
  * A task handle, or a definition to resolve inside a DAG.
@@ -77,10 +73,6 @@ export class DAGTask<TaskName extends string = string> {
      */
     readonly name: TaskName;
     /**
-     * Task callback; receives a task context when invoked.
-     */
-    readonly fn: TaskFn;
-    /**
      * Optional human-readable description.
      */
     readonly description: string | undefined;
@@ -92,22 +84,33 @@ export class DAGTask<TaskName extends string = string> {
      * When this task becomes ready; defaults to "all_success".
      */
     readonly triggerRule: TriggerRule;
+    /**
+     * Discriminates the task kind.
+     */
+    readonly kind: TaskKind;
+    /**
+     * The definition this handle was registered from, including kind-specific
+     * fields such as a sensor predicate or delay duration.
+     */
+    readonly definition: RegisteredTaskDefinition;
 
-    constructor(dag: DAG, definition: TaskParamOutput<TaskName>) {
+    constructor(dag: DAG, definition: AnyTaskDefinition) {
         assertTaskName(definition.name);
         TASK_STATE.set(this, {
             dag,
             downstream: new Set(),
             upstream: new Set(),
         });
-        this.id = hashTaskId(definition.name, definition.fn);
-        this.name = definition.name;
-        // SAFETY: task() types fn against this task's name; handles
-        // expose the name-erased callback signature for execution.
-        this.fn = definition.fn as TaskFn;
+        this.id = hashTaskId(definition.name, taskBehaviorSource(definition));
+        // SAFETY: DAG.getTask() types handles with the definition's literal name.
+        this.name = definition.name as TaskName;
         this.description = definition.description;
         this.config = definition.config;
         this.triggerRule = definition.triggerRule ?? DEFAULT_TRIGGER_RULE;
+        this.kind = definition.kind;
+        // SAFETY: callbacks are callable with the task context; the registered
+        // view widens their literal name parameter to string.
+        this.definition = definition as RegisteredTaskDefinition;
     }
 
     /**

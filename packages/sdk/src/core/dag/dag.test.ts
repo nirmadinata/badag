@@ -1,15 +1,17 @@
 import { describe, expect, expectTypeOf, it } from "vitest";
 
-import { FNV_128_HEX_LENGTH } from "../hash/hash";
-import { task as createTask } from "../task/task";
+import { FNV_128_HEX_LENGTH } from "@/core/hash/hash";
+import { TASK_KIND_ENUM } from "@/core/task/kind";
+import { task as createTask } from "@/core/task/task";
 import type {
     TaskContext,
     TaskFn,
     TaskParamInput,
     TaskParamOutput,
-} from "../task/types";
-import { DEFAULT_TRIGGER_RULE, TRIGGER_RULE_ENUM } from "../trigger-rule";
-import { DAG } from "./dag";
+} from "@/core/task/types";
+import { DEFAULT_TRIGGER_RULE, TRIGGER_RULE_ENUM } from "@/core/trigger-rule";
+
+import { createDAG, DAG } from "./dag";
 import { crossDownstream, DAGTask } from "./dag-task";
 
 function namesOf(dag: DAG): string[] {
@@ -31,7 +33,10 @@ function register<const Name extends string, Fn extends TaskFn<Name>>(
     return task;
 }
 
-function addTask(dag: DAG, params: TaskParamInput & { name: string }): DAGTask {
+function addTask<Fn extends TaskFn<string>>(
+    dag: DAG,
+    params: TaskParamInput<Fn> & { name: string }
+): DAGTask {
     return register(dag, createTask(params.name, params));
 }
 
@@ -66,7 +71,7 @@ function buildComplexDag() {
     const validate = createTask("validate", { fn: () => "valid" });
     const publish = createTask("publish", { fn: () => "published" });
 
-    const dag = new DAG("complex").chain(
+    const dag = createDAG("complex").chain(
         extract,
         [cleanA, cleanB],
         join,
@@ -87,6 +92,9 @@ function buildComplexDag() {
 
 const rawFn = (): string => "raw";
 
+// Captures its argument, so every call produces the same callback source text.
+const syncTableFn = (table: string) => () => table;
+
 describe("task definitions", () => {
     it("trims task names and passes them through context", () => {
         const definition = createTask("  my-task_name  ", {
@@ -96,7 +104,11 @@ describe("task definitions", () => {
         expect(definition.name).toBe("my-task_name");
         expectTypeOf(definition.name).toEqualTypeOf<"my-task_name">();
         expect(
-            definition.fn({ id: "my-task_name-id", name: "my-task_name" })
+            definition.fn({
+                id: "my-task_name-id",
+                name: "my-task_name",
+                payload: undefined,
+            })
         ).toBe("my-task_name");
     });
 
@@ -105,7 +117,7 @@ describe("task definitions", () => {
 
         expect(Object.hasOwn(definition, "id")).toBeFalsy();
 
-        const handle = register(new DAG("etl"), definition);
+        const handle = register(createDAG("etl"), definition);
 
         expect(handle.id).toHaveLength(FNV_128_HEX_LENGTH);
         expect(handle.id).toMatch(/^[0-9a-f]+$/u);
@@ -117,7 +129,7 @@ describe("task definitions", () => {
             description: "Read source data",
         });
 
-        const handle = register(new DAG("etl"), definition);
+        const handle = register(createDAG("etl"), definition);
 
         expect(definition.description).toBe("Read source data");
         expect(handle.description).toBe("Read source data");
@@ -125,7 +137,7 @@ describe("task definitions", () => {
 
     it("leaves task descriptions undefined when omitted", () => {
         const definition = createTask("extract", { fn: () => "raw" });
-        const handle = register(new DAG("etl"), definition);
+        const handle = register(createDAG("etl"), definition);
 
         expect(definition.description).toBeUndefined();
         expect(handle.description).toBeUndefined();
@@ -156,13 +168,13 @@ describe("task definitions", () => {
         const definition = createTask("extract", { fn: () => "raw" });
 
         expect(() =>
-            new DAG("etl").chain({ ...definition, name: "extract task" })
+            createDAG("etl").chain({ ...definition, name: "extract task" })
         ).toThrow(/must use letters or numbers separated by "-" or "_"/u);
     });
 
     it("defaults the trigger rule to all_success", () => {
         const definition = createTask("extract", { fn: () => "raw" });
-        const dag = new DAG("etl").chain(definition);
+        const dag = createDAG("etl").chain(definition);
 
         expect(definition.triggerRule).toBe(DEFAULT_TRIGGER_RULE);
         expect(dag.getTask("extract")?.triggerRule).toBe(DEFAULT_TRIGGER_RULE);
@@ -174,7 +186,7 @@ describe("task definitions", () => {
             triggerRule: TRIGGER_RULE_ENUM.OneFailed,
         });
 
-        const dag = new DAG("etl").chain(definition);
+        const dag = createDAG("etl").chain(definition);
 
         expect(definition.triggerRule).toBe(TRIGGER_RULE_ENUM.OneFailed);
         expect(dag.getTask("extract")?.triggerRule).toBe(
@@ -186,8 +198,8 @@ describe("task definitions", () => {
         const config = { timeout_ms: 1000 };
         const first = createTask("  first  ", { fn: rawFn, config });
         const second = createTask("first", { fn: rawFn, config });
-        const firstTask = register(new DAG("first"), first);
-        const secondTask = register(new DAG("second"), second);
+        const firstTask = register(createDAG("first"), first);
+        const secondTask = register(createDAG("second"), second);
 
         expect(firstTask.id).toBe(secondTask.id);
         expect(first.fn).toBe(rawFn);
@@ -196,17 +208,17 @@ describe("task definitions", () => {
 
     it("changes the task ID when the name or function source changes", () => {
         const base = register(
-            new DAG("base"),
+            createDAG("base"),
             createTask("extract", { fn: () => "raw" })
         );
 
         const renamed = register(
-            new DAG("renamed"),
+            createDAG("renamed"),
             createTask("load", { fn: () => "raw" })
         );
 
         const rewritten = register(
-            new DAG("rewritten"),
+            createDAG("rewritten"),
             createTask("extract", { fn: () => "clean" })
         );
 
@@ -223,11 +235,17 @@ describe("task definitions", () => {
         expectTypeOf(definition.fn).toEqualTypeOf<
             (ctx: TaskContext<"double">) => number
         >();
-        expect(definition.fn({ id: "double-id", name: "double" })).toBe(12);
+        expect(
+            definition.fn({
+                id: "double-id",
+                name: "double",
+                payload: undefined,
+            })
+        ).toBe(12);
     });
 
     it("keeps literal task names in lookups", () => {
-        const dag = new DAG("etl");
+        const dag = createDAG("etl");
         const definition = createTask("extract", { fn: () => "raw" });
 
         dag.chain(definition);
@@ -251,7 +269,11 @@ describe("async task functions", () => {
         >();
 
         await expect(
-            definition.fn({ id: "extract-id", name: "extract" })
+            definition.fn({
+                id: "extract-id",
+                name: "extract",
+                payload: undefined,
+            })
         ).resolves.toBe("extract-raw");
     });
 
@@ -270,7 +292,7 @@ describe("async task functions", () => {
     it("executes async task functions in topological order", async () => {
         const visited: string[] = [];
 
-        const dag = new DAG("etl").chain(
+        const dag = createDAG("etl").chain(
             createTask("extract", {
                 fn: async (ctx) => {
                     visited.push(ctx.name);
@@ -295,8 +317,20 @@ describe("async task functions", () => {
         );
 
         for (const task of dag.topologicalSort()) {
+            const { definition } = task;
+
+            if (definition.kind !== TASK_KIND_ENUM.Task) {
+                throw new Error(
+                    `Expected a regular task, got ${definition.kind}`
+                );
+            }
+
             // oxlint-disable-next-line no-await-in-loop -- dependency order requires sequential execution.
-            await task.fn({ id: task.id, name: task.name });
+            await definition.fn({
+                id: task.id,
+                name: task.name,
+                payload: undefined,
+            });
         }
 
         expect(visited).toStrictEqual(["extract", "transform", "load"]);
@@ -305,19 +339,42 @@ describe("async task functions", () => {
 
 describe("DAG construction", () => {
     it("keeps the name verbatim", () => {
-        expect(new DAG("etl").name).toBe("etl");
-        expect(new DAG("  etl  ").name).toBe("  etl  ");
+        expect(createDAG("etl").name).toBe("etl");
+        expect(createDAG("  etl  ").name).toBe("  etl  ");
     });
 
     it("rejects empty and whitespace-only names", () => {
-        expect(() => new DAG("")).toThrow("DAG name cannot be empty");
-        expect(() => new DAG("   ")).toThrow("DAG name cannot be empty");
+        expect(() => createDAG("")).toThrow("DAG name cannot be empty");
+        expect(() => createDAG("   ")).toThrow("DAG name cannot be empty");
+    });
+
+    it("builds the same DAG through createDAG", () => {
+        const dag = createDAG("etl");
+
+        expect(dag).toBeInstanceOf(DAG);
+        expect(dag.name).toBe("etl");
+        expectTypeOf(dag).toEqualTypeOf<DAG<"etl">>();
+        expectTypeOf(dag.getTask("extract")).toEqualTypeOf<
+            DAGTask<"extract"> | undefined
+        >();
+
+        const chained = dag.chain(createTask("extract", { fn: () => "raw" }));
+
+        expect(chained).toBe(dag);
+        expect(dag.topologicalSort().map((task) => task.name)).toStrictEqual([
+            "extract",
+        ]);
+    });
+
+    it("rejects empty and whitespace-only names through createDAG", () => {
+        expect(() => createDAG("")).toThrow("DAG name cannot be empty");
+        expect(() => createDAG("   ")).toThrow("DAG name cannot be empty");
     });
 });
 
 describe("DAG registration", () => {
     it("rejects task name collisions", () => {
-        const dag = new DAG("etl");
+        const dag = createDAG("etl");
 
         addTask(dag, { name: "extract", fn: () => "raw" });
 
@@ -327,7 +384,7 @@ describe("DAG registration", () => {
     });
 
     it("treats an identical definition as already registered", () => {
-        const dag = new DAG("etl");
+        const dag = createDAG("etl");
         const definition = createTask("extract", { fn: () => "raw" });
 
         dag.chain(definition).chain(definition);
@@ -335,9 +392,62 @@ describe("DAG registration", () => {
         expect(dag.tasks.size).toBe(1);
     });
 
+    it("keeps the first registration's metadata for a duplicate definition", () => {
+        const dag = createDAG("etl");
+
+        dag.chain(
+            createTask("extract", {
+                fn: rawFn,
+                config: { timeout_ms: 1000 },
+            })
+        ).chain(
+            createTask("extract", {
+                fn: rawFn,
+                description: "second registration",
+                config: { timeout_ms: 9999 },
+                triggerRule: TRIGGER_RULE_ENUM.OneFailed,
+            })
+        );
+
+        const registered = requireTask(dag, "extract");
+
+        expect(dag.tasks.size).toBe(1);
+        expect(registered.config).toStrictEqual({ timeout_ms: 1000 });
+        expect(registered.description).toBeUndefined();
+        expect(registered.triggerRule).toBe(DEFAULT_TRIGGER_RULE);
+    });
+
+    // Documents a known identity blind spot rather than desired behavior.
+    // See docs/adr/0003-callback-identity-uses-source-text.md.
+    it("silently drops a same-name definition that differs only by captured value", () => {
+        const dag = createDAG("warehouse")
+            .chain(createTask("sync", { fn: syncTableFn("customers") }))
+            .chain(createTask("sync", { fn: syncTableFn("orders") }));
+
+        const registered = requireTask(dag, "sync");
+        const { definition } = registered;
+
+        expect(dag.tasks.size).toBe(1);
+
+        if (definition.kind !== TASK_KIND_ENUM.Task) {
+            throw new Error(`Expected a regular task, got ${definition.kind}`);
+        }
+
+        // The "orders" definition never runs; the first registration wins.
+        expect(
+            definition.fn({
+                id: registered.id,
+                name: "sync",
+                payload: undefined,
+            })
+        ).toBe("customers");
+        // The discarded definition really did capture a different value.
+        expect(syncTableFn("orders")()).toBe("orders");
+    });
+
     it("rejects edges that cross DAG boundaries", () => {
-        const dag = new DAG("etl");
-        const other = new DAG("other");
+        const dag = createDAG("etl");
+        const other = createDAG("other");
         const task = addTask(dag, { name: "extract", fn: () => "raw" });
         const outsider = addTask(other, { name: "load", fn: () => "stored" });
 
@@ -347,7 +457,7 @@ describe("DAG registration", () => {
     });
 
     it("rejects same-DAG handles that are not registered", () => {
-        const dag = new DAG("etl");
+        const dag = createDAG("etl");
         const definition = createTask("extract", { fn: () => "raw" });
         const unregistered = new DAGTask(dag, definition);
         const registered = addTask(dag, { name: "load", fn: () => "stored" });
@@ -360,14 +470,14 @@ describe("DAG registration", () => {
     });
 
     it("does not expose a raw edge-insertion method", () => {
-        const dag = new DAG("etl");
+        const dag = createDAG("etl");
         const task = addTask(dag, { name: "extract", fn: () => 0 });
 
         expect("connectTo" in task).toBeFalsy();
     });
 
     it("registers definitions across chainable calls", () => {
-        const dag = new DAG("etl");
+        const dag = createDAG("etl");
         const first = createTask("first", { fn: () => 0 });
         const second = createTask("second", { fn: () => 0 });
 
@@ -378,7 +488,7 @@ describe("DAG registration", () => {
     });
 
     it("registers a batch atomically", () => {
-        const dag = new DAG("etl");
+        const dag = createDAG("etl");
         const first = createTask("first", { fn: () => 0 });
         const duplicate = createTask("first", { fn: () => 1 });
 
@@ -391,16 +501,22 @@ describe("DAG registration", () => {
 
         const definition2 = createTask("scaled", { fn: (ctx) => ctx.name });
 
-        const dag = new DAG("etl").chain(definition);
+        const dag = createDAG("etl").chain(definition);
         dag.chain(definition2);
 
         const handle = requireTask(dag, "scaled");
 
-        expect(handle.fn({ id: handle.id, name: handle.name })).toBe("scaled");
+        expect(
+            definition.fn({
+                id: handle.id,
+                name: definition.name,
+                payload: undefined,
+            })
+        ).toBe("scaled");
     });
 
     it("registers a prebuilt definition under its name", () => {
-        const dag = new DAG("etl");
+        const dag = createDAG("etl");
         const definition = createTask("extract", { fn: () => "raw" });
         const handle = register(dag, definition);
 
@@ -413,15 +529,15 @@ describe("DAG registration", () => {
 
     it("allows one definition in multiple DAGs", () => {
         const definition = createTask("extract", { fn: () => "raw" });
-        const first = register(new DAG("first"), definition);
-        const second = register(new DAG("second"), definition);
+        const first = register(createDAG("first"), definition);
+        const second = register(createDAG("second"), definition);
 
         expect(first).not.toBe(second);
         expect(first.id).toBe(second.id);
     });
 
     it("returns undefined for unknown names", () => {
-        const dag = new DAG("etl");
+        const dag = createDAG("etl");
 
         addTask(dag, { name: "extract", fn: () => "raw" });
 
@@ -430,7 +546,7 @@ describe("DAG registration", () => {
 
     it("stores config on the task by reference", () => {
         const config = { timeout_ms: 500, retries: 2 };
-        const dag = new DAG("etl");
+        const dag = createDAG("etl");
         const task = addTask(dag, { name: "extract", fn: () => 0, config });
 
         expect(task.config).toBe(config);
@@ -439,7 +555,7 @@ describe("DAG registration", () => {
 
 describe("dependency edges", () => {
     it("records both sides of an edge once", () => {
-        const dag = new DAG("etl");
+        const dag = createDAG("etl");
         const upstream = addTask(dag, { name: "upstream", fn: () => 0 });
         const downstream = addTask(dag, { name: "downstream", fn: () => 0 });
 
@@ -451,7 +567,7 @@ describe("dependency edges", () => {
     });
 
     it("links every task in an upstream list", () => {
-        const dag = new DAG("etl");
+        const dag = createDAG("etl");
         const first = addTask(dag, { name: "first", fn: () => 0 });
         const second = addTask(dag, { name: "second", fn: () => 0 });
         const sink = addTask(dag, { name: "sink", fn: () => 0 });
@@ -464,7 +580,7 @@ describe("dependency edges", () => {
     });
 
     it("treats dependsOn as setUpstream", () => {
-        const dag = new DAG("etl");
+        const dag = createDAG("etl");
         const upstream = addTask(dag, { name: "upstream", fn: () => 0 });
         const downstream = addTask(dag, { name: "downstream", fn: () => 0 });
 
@@ -475,7 +591,7 @@ describe("dependency edges", () => {
     });
 
     it("rejects self dependencies on the upstream side", () => {
-        const dag = new DAG("etl");
+        const dag = createDAG("etl");
         const task = addTask(dag, { name: "task", fn: () => 0 });
 
         expect(() => task.setUpstream(task)).toThrow(
@@ -484,8 +600,8 @@ describe("dependency edges", () => {
     });
 
     it("rejects edges whose upstream task belongs to another DAG", () => {
-        const dag = new DAG("etl");
-        const other = new DAG("other");
+        const dag = createDAG("etl");
+        const other = createDAG("other");
         const task = addTask(dag, { name: "extract", fn: () => 0 });
         const outsider = addTask(other, { name: "load", fn: () => 0 });
 
@@ -495,7 +611,7 @@ describe("dependency edges", () => {
     });
 
     it("rejects a deep cycle without recording the rejected edge", () => {
-        const dag = new DAG("etl");
+        const dag = createDAG("etl");
         const first = addTask(dag, { name: "first", fn: () => 0 });
         const second = addTask(dag, { name: "second", fn: () => 0 });
         const third = addTask(dag, { name: "third", fn: () => 0 });
@@ -511,7 +627,7 @@ describe("dependency edges", () => {
     });
 
     it("registers and wires definitions in one chain call", () => {
-        const dag = new DAG("etl");
+        const dag = createDAG("etl");
         const first = createTask("first", { fn: () => 0 });
         const second = createTask("second", { fn: () => 0 });
 
@@ -525,7 +641,7 @@ describe("dependency edges", () => {
     });
 
     it("registers definitions passed to edge methods", () => {
-        const dag = new DAG("etl");
+        const dag = createDAG("etl");
         const first = register(dag, createTask("first", { fn: () => 0 }));
         const second = createTask("second", { fn: () => 0 });
 
@@ -538,7 +654,7 @@ describe("dependency edges", () => {
     });
 
     it("registers definitions passed to addDependency", () => {
-        const dag = new DAG("etl");
+        const dag = createDAG("etl");
         const first = createTask("first", { fn: () => 0 });
         const second = createTask("second", { fn: () => 0 });
 
@@ -551,7 +667,7 @@ describe("dependency edges", () => {
     });
 
     it("links every pair through addDependencies", () => {
-        const dag = new DAG("etl");
+        const dag = createDAG("etl");
         const first = addTask(dag, { name: "first", fn: () => 0 });
         const second = addTask(dag, { name: "second", fn: () => 0 });
         const sink = addTask(dag, { name: "sink", fn: () => 0 });
@@ -564,7 +680,7 @@ describe("dependency edges", () => {
     });
 
     it("keeps a failed upstream batch unchanged", () => {
-        const dag = new DAG("etl");
+        const dag = createDAG("etl");
         const first = addTask(dag, { name: "first", fn: () => 0 });
         const second = addTask(dag, { name: "second", fn: () => 0 });
         const sink = addTask(dag, { name: "sink", fn: () => 0 });
@@ -580,7 +696,7 @@ describe("dependency edges", () => {
     });
 
     it("keeps a failed downstream batch unchanged", () => {
-        const dag = new DAG("etl");
+        const dag = createDAG("etl");
         const first = addTask(dag, { name: "first", fn: () => 0 });
         const second = addTask(dag, { name: "second", fn: () => 0 });
         const sink = addTask(dag, { name: "sink", fn: () => 0 });
@@ -596,7 +712,7 @@ describe("dependency edges", () => {
     });
 
     it("rolls back definitions registered by a failed edge batch", () => {
-        const dag = new DAG("etl");
+        const dag = createDAG("etl");
         const second = addTask(dag, { name: "second", fn: () => 0 });
         const sink = addTask(dag, { name: "sink", fn: () => 0 });
         const fresh = createTask("fresh", { fn: () => 0 });
@@ -613,7 +729,7 @@ describe("dependency edges", () => {
 
 describe("cross-downstream linking", () => {
     it("links every pair across two groups", () => {
-        const dag = new DAG("etl");
+        const dag = createDAG("etl");
         const left = addTask(dag, { name: "left", fn: () => 0 });
         const leftPeer = addTask(dag, { name: "leftPeer", fn: () => 0 });
         const right = addTask(dag, { name: "right", fn: () => 0 });
@@ -628,7 +744,7 @@ describe("cross-downstream linking", () => {
     });
 
     it("does nothing when either group is empty", () => {
-        const dag = new DAG("etl");
+        const dag = createDAG("etl");
         const first = addTask(dag, { name: "first", fn: () => 0 });
         const second = addTask(dag, { name: "second", fn: () => 0 });
 
@@ -642,7 +758,7 @@ describe("cross-downstream linking", () => {
     });
 
     it("does not add partial edges when a pair would cycle", () => {
-        const dag = new DAG("etl");
+        const dag = createDAG("etl");
         const left = addTask(dag, { name: "left", fn: () => 0 });
         const leftPeer = addTask(dag, { name: "leftPeer", fn: () => 0 });
         const right = addTask(dag, { name: "right", fn: () => 0 });
@@ -658,8 +774,8 @@ describe("cross-downstream linking", () => {
     });
 
     it("rejects handles from another DAG without linking", () => {
-        const dag = new DAG("left");
-        const other = new DAG("right");
+        const dag = createDAG("left");
+        const other = createDAG("right");
         const left = addTask(dag, { name: "left", fn: () => 0 });
         const right = addTask(other, { name: "right", fn: () => 0 });
 
@@ -673,7 +789,7 @@ describe("cross-downstream linking", () => {
 
 describe("DAG ordering", () => {
     it("sorts a dependency chain", () => {
-        const dag = new DAG("etl");
+        const dag = createDAG("etl");
         const extract = addTask(dag, { name: "extract", fn: () => "raw" });
 
         const transform = addTask(dag, {
@@ -690,7 +806,7 @@ describe("DAG ordering", () => {
     });
 
     it("places fan-out and fan-in tasks between the ends", () => {
-        const dag = new DAG("diamond");
+        const dag = createDAG("diamond");
         const root = addTask(dag, { name: "root", fn: () => 0 });
         const left = addTask(dag, { name: "left", fn: () => 0 });
         const right = addTask(dag, { name: "right", fn: () => 0 });
@@ -707,7 +823,7 @@ describe("DAG ordering", () => {
     });
 
     it("rejects cycles and self dependencies", () => {
-        const dag = new DAG("etl");
+        const dag = createDAG("etl");
         const first = addTask(dag, { name: "first", fn: () => 0 });
         const second = addTask(dag, { name: "second", fn: () => 0 });
 
@@ -720,7 +836,7 @@ describe("DAG ordering", () => {
     });
 
     it("detects cycles reached through shared descendants", () => {
-        const dag = new DAG("diamond");
+        const dag = createDAG("diamond");
         const root = addTask(dag, { name: "root", fn: () => 0 });
         const left = addTask(dag, { name: "left", fn: () => 0 });
         const right = addTask(dag, { name: "right", fn: () => 0 });
@@ -733,18 +849,18 @@ describe("DAG ordering", () => {
     });
 
     it("returns an empty order for an empty DAG", () => {
-        expect(new DAG("empty").topologicalSort()).toStrictEqual([]);
+        expect(createDAG("empty").topologicalSort()).toStrictEqual([]);
     });
 
     it("returns the only task of a single-task DAG", () => {
-        const dag = new DAG("single");
+        const dag = createDAG("single");
         const task = addTask(dag, { name: "only", fn: () => 0 });
 
         expect(dag.topologicalSort()).toStrictEqual([task]);
     });
 
     it("keeps registration order for independent tasks", () => {
-        const dag = new DAG("flat");
+        const dag = createDAG("flat");
 
         addTask(dag, { name: "zeta", fn: () => 0 });
         addTask(dag, { name: "alpha", fn: () => 0 });
@@ -754,7 +870,7 @@ describe("DAG ordering", () => {
     });
 
     it("places every task after all of its upstreams", () => {
-        const dag = new DAG("pipeline");
+        const dag = createDAG("pipeline");
 
         const root = addTask(dag, { name: "A", fn: () => 0 });
         const left = addTask(dag, { name: "B", fn: () => 0 });
@@ -791,7 +907,7 @@ describe("DAG ordering", () => {
 
 describe("DAG readiness", () => {
     it("releases only unblocked tasks", () => {
-        const dag = new DAG("diamond");
+        const dag = createDAG("diamond");
         const root = addTask(dag, { name: "root", fn: () => 0 });
         const left = addTask(dag, { name: "left", fn: () => 0 });
         const right = addTask(dag, { name: "right", fn: () => 0 });
@@ -814,7 +930,7 @@ describe("DAG readiness", () => {
     });
 
     it("releases a fan-in task once every upstream completes", () => {
-        const dag = new DAG("diamond");
+        const dag = createDAG("diamond");
         const root = addTask(dag, { name: "root", fn: () => 0 });
         const left = addTask(dag, { name: "left", fn: () => 0 });
         const right = addTask(dag, { name: "right", fn: () => 0 });
@@ -829,11 +945,11 @@ describe("DAG readiness", () => {
     });
 
     it("returns an empty list for an empty DAG", () => {
-        expect(new DAG("empty").getReadyTasks(new Set())).toStrictEqual([]);
+        expect(createDAG("empty").getReadyTasks(new Set())).toStrictEqual([]);
     });
 
     it("returns sources in registration order", () => {
-        const dag = new DAG("etl");
+        const dag = createDAG("etl");
         const first = addTask(dag, { name: "first", fn: () => 0 });
         const second = addTask(dag, { name: "second", fn: () => 0 });
 
@@ -846,7 +962,7 @@ describe("DAG readiness", () => {
     });
 
     it("never returns completed tasks", () => {
-        const dag = new DAG("etl");
+        const dag = createDAG("etl");
         const first = addTask(dag, { name: "first", fn: () => 0 });
         const second = addTask(dag, { name: "second", fn: () => 0 });
 
@@ -861,7 +977,7 @@ describe("DAG readiness", () => {
     });
 
     it("ignores task IDs that are not in the DAG", () => {
-        const dag = new DAG("etl");
+        const dag = createDAG("etl");
         const first = addTask(dag, { name: "first", fn: () => 0 });
 
         expect(dag.getReadyTasks(new Set(["missing"]))).toStrictEqual([first]);
@@ -870,14 +986,14 @@ describe("DAG readiness", () => {
 
 describe("JSON representation", () => {
     it("returns an empty task list for an empty DAG", () => {
-        expect(new DAG("empty").toJSON()).toStrictEqual({
+        expect(createDAG("empty").toJSON()).toStrictEqual({
             name: "empty",
             tasks: [],
         });
     });
 
     it("serializes tasks and edges by name", () => {
-        const dag = new DAG("etl");
+        const dag = createDAG("etl");
 
         const extract = addTask(dag, {
             name: "extract",
@@ -902,6 +1018,7 @@ describe("JSON representation", () => {
                 {
                     id: extract.id,
                     name: "extract",
+                    kind: TASK_KIND_ENUM.Task,
                     triggerRule: TRIGGER_RULE_ENUM.AllDone,
                     config: { timeout_ms: 100 },
                     upstream: [],
@@ -910,6 +1027,7 @@ describe("JSON representation", () => {
                 {
                     id: transform.id,
                     name: "transform",
+                    kind: TASK_KIND_ENUM.Task,
                     triggerRule: TRIGGER_RULE_ENUM.AllSuccess,
                     upstream: ["extract"],
                     downstream: ["load"],
@@ -917,6 +1035,7 @@ describe("JSON representation", () => {
                 {
                     id: load.id,
                     name: "load",
+                    kind: TASK_KIND_ENUM.Task,
                     triggerRule: TRIGGER_RULE_ENUM.AllSuccess,
                     upstream: ["transform"],
                     downstream: [],
@@ -926,12 +1045,13 @@ describe("JSON representation", () => {
     });
 
     it("omits config when it is missing", () => {
-        const dag = new DAG("etl");
+        const dag = createDAG("etl");
         const task = addTask(dag, { name: "extract", fn: () => 0 });
 
         expect(dag.toJSON().tasks[0]).toStrictEqual({
             id: task.id,
             name: "extract",
+            kind: TASK_KIND_ENUM.Task,
             triggerRule: TRIGGER_RULE_ENUM.AllSuccess,
             upstream: [],
             downstream: [],
@@ -939,7 +1059,7 @@ describe("JSON representation", () => {
     });
 
     it("drops functions from the encoded form", () => {
-        const dag = new DAG("etl");
+        const dag = createDAG("etl");
         addTask(dag, { name: "extract", fn: () => "raw" });
 
         const encoded = JSON.stringify(dag);
@@ -958,6 +1078,7 @@ describe("JSON representation", () => {
                 {
                     id: extract.id,
                     name: "extract",
+                    kind: TASK_KIND_ENUM.Task,
                     triggerRule: DEFAULT_TRIGGER_RULE,
                     description: "Read source data",
                     upstream: [],
@@ -966,6 +1087,7 @@ describe("JSON representation", () => {
                 {
                     id: cleanA.id,
                     name: "cleanA",
+                    kind: TASK_KIND_ENUM.Task,
                     triggerRule: DEFAULT_TRIGGER_RULE,
                     upstream: ["extract"],
                     downstream: ["join"],
@@ -973,6 +1095,7 @@ describe("JSON representation", () => {
                 {
                     id: cleanB.id,
                     name: "cleanB",
+                    kind: TASK_KIND_ENUM.Task,
                     triggerRule: DEFAULT_TRIGGER_RULE,
                     upstream: ["extract"],
                     downstream: ["join"],
@@ -980,6 +1103,7 @@ describe("JSON representation", () => {
                 {
                     id: join.id,
                     name: "join",
+                    kind: TASK_KIND_ENUM.Task,
                     triggerRule: DEFAULT_TRIGGER_RULE,
                     upstream: ["cleanA", "cleanB"],
                     downstream: ["validate"],
@@ -987,6 +1111,7 @@ describe("JSON representation", () => {
                 {
                     id: validate.id,
                     name: "validate",
+                    kind: TASK_KIND_ENUM.Task,
                     triggerRule: DEFAULT_TRIGGER_RULE,
                     upstream: ["join"],
                     downstream: ["publish"],
@@ -994,6 +1119,7 @@ describe("JSON representation", () => {
                 {
                     id: publish.id,
                     name: "publish",
+                    kind: TASK_KIND_ENUM.Task,
                     triggerRule: DEFAULT_TRIGGER_RULE,
                     upstream: ["validate"],
                     downstream: [],
@@ -1005,7 +1131,7 @@ describe("JSON representation", () => {
 
 describe("group chaining", () => {
     it("links each group to the next and returns the DAG", () => {
-        const dag = new DAG("example");
+        const dag = createDAG("example");
         const a = addTask(dag, { name: "A", fn: () => 0 });
         const b = addTask(dag, { name: "B", fn: () => 0 });
         const c = addTask(dag, { name: "C", fn: () => 0 });
@@ -1032,7 +1158,7 @@ describe("group chaining", () => {
     });
 
     it("registers a single group without adding edges", () => {
-        const dag = new DAG("single");
+        const dag = createDAG("single");
         const definition = createTask("only", { fn: () => 0 });
 
         dag.chain(definition);
@@ -1043,7 +1169,7 @@ describe("group chaining", () => {
     });
 
     it("adds no edges for a single group and skips linked edges", () => {
-        const dag = new DAG("chain");
+        const dag = createDAG("chain");
         const first = addTask(dag, { name: "first", fn: () => 0 });
         const second = addTask(dag, { name: "second", fn: () => 0 });
 
@@ -1057,7 +1183,7 @@ describe("group chaining", () => {
     });
 
     it("links a group to the preceding group", () => {
-        const dag = new DAG("fan-in");
+        const dag = createDAG("fan-in");
         const first = addTask(dag, { name: "first", fn: () => 0 });
         const second = addTask(dag, { name: "second", fn: () => 0 });
         const sink = addTask(dag, { name: "sink", fn: () => 0 });
@@ -1070,7 +1196,7 @@ describe("group chaining", () => {
     });
 
     it("chains three tasks in one call", () => {
-        const dag = new DAG("linear");
+        const dag = createDAG("linear");
         const first = addTask(dag, { name: "first", fn: () => 0 });
         const second = addTask(dag, { name: "second", fn: () => 0 });
         const third = addTask(dag, { name: "third", fn: () => 0 });
@@ -1084,7 +1210,7 @@ describe("group chaining", () => {
     });
 
     it("chains a middle group between two tasks in one call", () => {
-        const dag = new DAG("grouped");
+        const dag = createDAG("grouped");
         const first = addTask(dag, { name: "first", fn: () => 0 });
         const second1 = addTask(dag, { name: "second1", fn: () => 0 });
         const second2 = addTask(dag, { name: "second2", fn: () => 0 });
@@ -1104,7 +1230,7 @@ describe("group chaining", () => {
         const c = createTask("c", { fn: () => 0 });
         const d = createTask("d", { fn: () => 0 });
 
-        const dag = new DAG("etl").chain(a, b).chain(c, d);
+        const dag = createDAG("etl").chain(a, b).chain(c, d);
 
         expect(downstreamNames(dag)).toStrictEqual({
             a: ["b"],
@@ -1115,7 +1241,7 @@ describe("group chaining", () => {
     });
 
     it("links every pair across three groups in one call", () => {
-        const dag = new DAG("matrix");
+        const dag = createDAG("matrix");
         const a1 = addTask(dag, { name: "a1", fn: () => 0 });
         const a2 = addTask(dag, { name: "a2", fn: () => 0 });
         const b1 = addTask(dag, { name: "b1", fn: () => 0 });
@@ -1149,7 +1275,7 @@ describe("group chaining", () => {
     });
 
     it("rejects a cycle spanning multiple chained groups", () => {
-        const dag = new DAG("cycle");
+        const dag = createDAG("cycle");
         const first = addTask(dag, { name: "first", fn: () => 0 });
         const second = addTask(dag, { name: "second", fn: () => 0 });
         const third = addTask(dag, { name: "third", fn: () => 0 });
@@ -1165,7 +1291,7 @@ describe("group chaining", () => {
     });
 
     it("rolls back tasks registered by a failed chain", () => {
-        const dag = new DAG("cycle");
+        const dag = createDAG("cycle");
         const first = addTask(dag, { name: "first", fn: () => 0 });
         const second = addTask(dag, { name: "second", fn: () => 0 });
         const third = createTask("third", { fn: () => 0 });
@@ -1181,9 +1307,9 @@ describe("group chaining", () => {
     });
 
     it("rejects tasks from another DAG inside chained groups", () => {
-        const dag = new DAG("etl");
+        const dag = createDAG("etl");
         const first = addTask(dag, { name: "first", fn: () => 0 });
-        const other = new DAG("other");
+        const other = createDAG("other");
         const outsider = addTask(other, { name: "outsider", fn: () => 0 });
 
         expect(() => dag.chain([first], [outsider])).toThrow(
@@ -1192,7 +1318,7 @@ describe("group chaining", () => {
     });
 
     it("leaves the chain disconnected when a middle group is empty", () => {
-        const dag = new DAG("empty-group");
+        const dag = createDAG("empty-group");
         const first = addTask(dag, { name: "first", fn: () => 0 });
         const third = addTask(dag, { name: "third", fn: () => 0 });
 
@@ -1203,7 +1329,7 @@ describe("group chaining", () => {
     });
 
     it("deduplicates a task repeated inside one group", () => {
-        const dag = new DAG("duplicate-group");
+        const dag = createDAG("duplicate-group");
         const first = addTask(dag, { name: "first", fn: () => 0 });
         const second = addTask(dag, { name: "second", fn: () => 0 });
 

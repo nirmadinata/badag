@@ -33,14 +33,11 @@ export function fnv1a128(value: string): string {
 }
 
 /**
- * Derive a stable id from the task name and function source.
+ * Derive the task ID from the task name and behavior source.
  *
- * `fn.toString()` is the function's source text, so identical source produces
- * the same id; values captured by the closure do not participate.
+ * Stable within one build of the program: callback behavior sources come from
+ * function source text, so minification changes the result.
  */
-export function hashTaskId(
-    name: string,
-    fn: (...args: never[]) => unknown
-): string {
-    return fnv1a128(JSON.stringify([name, fn.toString()]));
+export function hashTaskId(name: string, source: string): string {
+    return fnv1a128(JSON.stringify([name, source]));
 }

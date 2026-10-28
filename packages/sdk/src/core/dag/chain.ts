@@ -8,12 +8,11 @@
  * plain `string` (generic helpers) skip the checks.
  */
 
-import type { AnyTaskFn, TaskFn } from "../task/types";
+import type { TaskFn } from "@/core/task/types";
 
 /** The structural shape the chain checks need from a handle or definition. */
 interface ChainTask {
     readonly name: string;
-    readonly fn: AnyTaskFn;
 }
 
 /** A task, or a wiring set. */
@@ -25,9 +24,11 @@ type TaskNameOf<Task> = Task extends {
     ? TaskName
     : never;
 
-type TaskFnOf<Task> = Task extends { readonly fn: infer Fn extends AnyTaskFn }
+type TaskFnOf<Task> = Task extends {
+    readonly fn: infer Fn extends TaskFn<never>;
+}
     ? Fn
-    : AnyTaskFn;
+    : TaskFn<never>;
 
 type GroupNames<Group> = TaskNameOf<
     Group extends readonly (infer Task)[] ? Task : Group
@@ -192,7 +193,7 @@ type FindChainCycle<
  * `TaskFn` assignable to `Fn` means `Fn` exposes no more than the generic task
  * function, so a signature comparison would produce false duplicates.
  */
-type IsBroadFn<Fn extends AnyTaskFn> = TaskFn extends Fn ? true : false;
+type IsBroadFn<Fn extends TaskFn<never>> = TaskFn extends Fn ? true : false;
 
 type DagLabel<DagName extends string> = string extends DagName
     ? "this DAG"

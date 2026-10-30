@@ -494,17 +494,13 @@ const route = branch("route", {
     choose: (ctx) => (ctx.name === "route" ? ["us", "eu"] : "us"),
 });
 
-const dag = createDAG("regions").chain(
-    route,
-    [task("us", { fn: () => "us" }), task("eu", { fn: () => "eu" })]
-);
+const dag = createDAG("regions").chain(route, [
+    task("us", { fn: () => "us" }),
+    task("eu", { fn: () => "eu" }),
+]);
 ```
 
-With `branches` declared, the wiring step directly after the branch task must
-name exactly those branches: routing to an undeclared task, or declaring a
-branch the step does not route to, is rejected at compile time and at runtime.
-A branch without `branches` stays unchecked, and only the branch's own
-downstream step is constrained — what those tasks require next is not.
+With `branches` declared, the wiring step directly after the branch task must name exactly those branches: routing to an undeclared task, or declaring a branch the step does not route to, is rejected at compile time and at runtime. A branch without `branches` stays unchecked, and only the branch's own downstream step is constrained — what those tasks require next is not.
 
 A scheduler uses the returned name(s) to decide which downstream tasks to run.
 
@@ -644,6 +640,53 @@ createDAG("etl").chain(a, b).chain(b, c).chain(c, d);
 ```
 
 Wiring set boundaries do not weaken validation: self edges, cycles across wiring sets, invalid duplicate definitions, and handles from another DAG are rejected.
+
+### Bitshift notation
+
+`dag.parse` wires tasks with Airflow's `>>`/`<<` notation, written as a tagged template. `>>` means "then" and `<<` means "before"; operators evaluate left to right, and each result becomes the left-hand side of the next:
+
+```ts
+const a = task("a", { fn: () => "a" });
+const b = task("b", { fn: () => "b" });
+const c = task("c", { fn: () => "c" });
+
+const dag = createDAG("etl").parse`${a} >> ${b} >> ${c}`; // a -> b -> c
+```
+
+A `DAGTask` handle or a wiring set is a valid operand, so `>>` and `<<` compose exactly like Airflow's `set_downstream`/`set_upstream`:
+
+```ts
+createDAG("etl").parse`${a} >> ${b} << ${c}`; // a -> b, c -> b
+createDAG("etl").parse`${[a, c]} >> ${b}`; // the same graph
+createDAG("etl").parse`${a} >> ${[b, c]} >> ${d}`; // fan out, then fan in
+```
+
+An expression with one operand registers the task without wiring it, matching `dag.chain(task)`:
+
+```ts
+createDAG("etl").parse`${extract}`; // registers "extract", adds no edge
+```
+
+One expression per call. A newline inside the template is rejected rather than treated as a statement separator, so a second expression is a second call:
+
+```ts
+createDAG("etl").parse`${extract} >> ${clean}`.parse`${clean} >> ${load}`;
+```
+
+`parse()` accepts the same operands as every other wiring path: a handle from this DAG, or a definition that is registered on first use. It is transactional like `chain()` — a rejected task, edge, or notation is rolled back, leaving neither tasks nor edges behind. Already-linked edges are skipped, so repeating an expression is idempotent.
+
+Text outside the operands is validated: a leading or trailing fragment, two adjacent operands, an empty operand list, a nested list, and an empty list are all errors. Whitespace around an operator is allowed, so `${a}>>${b}` and `${a}   >>   ${b}` are both accepted.
+
+`parse()` registers its operands in the DAG's type, exactly as `chain()` does: the returned DAG carries every parsed definition's name and signature, so a later `chain()` or `parse()` call that reuses a name with a different signature is rejected at compile time.
+
+```ts
+const extract = task("extract", { fn: () => "raw" });
+const dag = createDAG("etl").parse`${extract}`;
+
+dag.chain(task("extract", { fn: () => 1 })); // error: task "extract" already exists in DAG "etl"
+```
+
+Edges are not part of that state. TypeScript infers the interpolated operands as tasks — a string, a number, or a nested list fails to typecheck — but it does not infer the literal `>>`/`<<` segments, so the DAG cannot see the operator sequence at compile time. Cycles, self edges, cross-DAG handles, and branch routing are therefore checked when `parse()` runs, not when the file typechecks. Use `chain()` when a compile-time cycle check matters. See [ADR 0006](../../docs/adr/0006-bitshift-notation-is-runtime-validated.md).
 
 ### Compile-time chain checks
 
@@ -835,7 +878,7 @@ grouped.toJSON().tasks.map(({ name, upstream, downstream }) => ({
 | Export | Kind | Summary |
 | --- | --- | --- |
 | `createDAG` | function | `createDAG(name)` returns a `DAG`; keeps the literal name type, so `chain()` checks apply |
-| `DAG` | class | `name`, `tasks`, `getTask()`, `addDependency()`, `addDependencies()`, `chain()`, `topologicalSort()`, `getReadyTasks()`, `toJSON()` |
+| `DAG` | class | `name`, `tasks`, `getTask()`, `addDependency()`, `addDependencies()`, `chain()`, `parse`, `topologicalSort()`, `getReadyTasks()`, `toJSON()` |
 | `DAGTask` | type | Registered task handle; `id`, `name`, `kind`, `definition`, `description`, `config`, `triggerRule`, `upstream`, `downstream`, `setUpstream()`, `setDownstream()`, `dependsOn()`. Minted by `DAG`, not constructible by consumers |
 | `task` | function | Creates a regular task definition from a name and `{ fn }` input |
 | `sensor` | function | Creates a sensor definition storing a predicate and optional `pokeIntervalMs`; the SDK does not poll |
@@ -864,6 +907,7 @@ grouped.toJSON().tasks.map(({ name, upstream, downstream }) => ({
 | `TRIGGER_RULE_ENUM` | object | Enum-like map of the supported trigger rules |
 | `TaskLike` | type | A `DAGTask` or a task definition returned by a factory |
 | `TaskOrTasks` | type | `TaskLike \| readonly TaskLike[]` |
+| `WiringOperand` | type | `TaskLike \| readonly TaskLike[]` — one operand of a wiring expression |
 | `TaskJson` | type | Discriminated union of serialized task kinds; includes `kind` and kind-specific serializable fields |
 | `DAGJson` | interface | `{ name, tasks }` returned by `toJSON()` |
 | `CreateTask` | type | Call signature of `task(name, input)` |
@@ -885,6 +929,7 @@ grouped.toJSON().tasks.map(({ name, upstream, downstream }) => ({
 - `DAGTask.kind` identifies the factory, and `DAGTask.definition` retains the original kind-specific definition, including callbacks that are not serialized.
 - `getTask()`, `topologicalSort()`, `getReadyTasks()`, and `task.upstream` expose `DAGTask`. Narrow `task.definition.kind` to access the kind-specific behavior field and pass `{ id: task.id, name: task.name }` when invoking it.
 - `DAG` carries internal type parameters for the definitions and edges added through `chain()`. Annotating a value as plain `DAG` intentionally opts out of the compile-time checks above.
+- `parse` types each operand as a task or a flat list of tasks, so a string, a number, or a nested list fails to typecheck. It adds those definitions to the DAG's type state as signatures and declared branch sets, like `chain`, so duplicate definitions are caught at compile time; it adds no edges, because TypeScript cannot infer the literal `>>`/`<<` segments. Use `chain()` when compile-time cycle detection matters.
 - `toJSON()` returns a fresh `DAGJson` snapshot with `kind`, kind-specific serializable fields, and edges keyed by task name; functions are removed.
 
 ## Errors
@@ -905,6 +950,14 @@ grouped.toJSON().tasks.map(({ name, upstream, downstream }) => ({
 | `Branch "<branch>" cannot route to "<task>"; it declares no branches` | Same, for a branch declaring an empty `branches` set |
 | `Branch "<branch>" must route to declared branch "<name>"` | Same, when a declared branch is left unrouted by that wiring step |
 | `Dependency "<from>" -> "<to>" creates a cycle` | `addDependency()`, `addDependencies()`, and the wiring methods |
+| `Wiring expression in DAG "<dag>" needs at least one task` | `parse` with no interpolated operands |
+| `Unexpected "<text>" before the first task in DAG "<dag>"` | `parse` when the template starts with text |
+| `Unexpected "<text>" after the last task in DAG "<dag>"` | `parse` when the template ends with text |
+| `Unrecognized wiring syntax "<segment>" in DAG "<dag>"; expected ">>" or "<<" between tasks` | `parse` for a non-operator between two operands |
+| `Wiring expression in DAG "<dag>" spans multiple lines; call parse once per expression` | `parse` when a segment contains a newline |
+| `Wiring expression in DAG "<dag>" cannot nest task lists` | `parse` for an array inside an operand array |
+| `Wiring expression in DAG "<dag>" cannot use an empty task list` | `parse` for `[]` as an operand |
+| `Wiring expression in DAG "<dag>" expects tasks; received <type>` | `parse` for an operand that is not a task or definition |
 | `DAG "<name>" contains a cycle` | `topologicalSort()` — defensive, unreachable via the public API |
 
 ## License

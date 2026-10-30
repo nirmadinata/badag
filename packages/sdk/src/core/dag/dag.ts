@@ -9,10 +9,13 @@ import type {
     NextBranches,
     NextEdges,
     NextSignatures,
+    ParseProblem,
 } from "./chain";
 import { DAGTask, isDefinition, normalizeTasks, stateOf } from "./dag-task";
 import type { TaskDefinition, TaskLike, TaskOrTasks } from "./dag-task";
 import type { DAGJson, TaskJson, TaskJsonBase } from "./types";
+import { parseWiringExpression } from "./wiring";
+import type { WiringOperand } from "./wiring";
 
 /**
  * A task is ready once it is incomplete and every upstream task is done.
@@ -34,6 +37,9 @@ function isReady(task: DAGTask, completed: ReadonlySet<string>): boolean {
 type TaskNameIndex = string;
 
 type TaskIdIndex = string;
+
+/** One validated edge step: every task on the left upstream of every task on the right. */
+type EdgeStep = readonly [readonly DAGTask[], readonly DAGTask[]];
 
 /** Common serialized fields, omitting absent optional metadata. */
 function taskJsonBase(task: DAGTask): Omit<TaskJsonBase<TaskKind>, "kind"> {
@@ -223,6 +229,82 @@ export class DAG<
             throw error;
         }
 
+        return this;
+    }
+
+    /**
+     * Wire tasks with Airflow-style bitshift notation.
+     *
+     * dag.parse`${a} >> ${b} >> ${c}`        => a -> b -> c
+     * dag.parse`${a} >> ${b} << ${c}`        => a -> b, c -> b
+     * dag.parse`${[a, c]} >> ${b}`           => a -> b, c -> b
+     * dag.parse`${a}`                        => registers a, adds no edge
+     *
+     * Operators evaluate left to right and each result feeds the next, so
+     * `${a} >> ${b} << ${c}` is the same graph as `${[a, c]} >> ${b}`.
+     * Operands accept `DAGTask` handles and definitions alike; definitions are
+     * registered on first use, exactly as in `chain()`.
+     *
+     * One expression per call. A newline inside the template is rejected, so a
+     * second expression needs a second call.
+     *
+     * This call is transactional, like `chain()`: a rejected task, edge, or
+     * wiring step leaves the task registry and the edges unchanged.
+     *
+     * The returned DAG carries the operands as compile-time signatures and
+     * declared branch sets, exactly as `chain()` does, so a later `chain()`
+     * call's duplicate-definition check sees tasks registered here. It does
+     * not carry edges: TypeScript cannot read the literal `>>`/`<<` segments,
+     * so edge direction is known only at runtime, and recording guesswork in
+     * the edge state would make a later `chain()` cycle check silently weaker.
+     * Cycles, self edges, cross-DAG handles, and branch routing are therefore
+     * checked when the call runs.
+     */
+    parse<const Operands extends readonly WiringOperand[]>(
+        segments: TemplateStringsArray,
+        ...operands: Operands &
+            (ParseProblem<DagName, Signatures, Branches, Operands> extends true
+                ? unknown
+                : ParseProblem<DagName, Signatures, Branches, Operands>)
+    ): DAG<
+        DagName,
+        NextSignatures<DagName, Signatures, Operands>,
+        Edges,
+        NextBranches<DagName, Branches, Operands>
+    >;
+    parse(
+        segments: TemplateStringsArray,
+        ...operands: readonly WiringOperand[]
+    ): this {
+        const { steps, tasks } = parseWiringExpression(
+            this.#name,
+            segments,
+            operands
+        );
+
+        for (const task of tasks) {
+            this.#assertHandleBelongs(task);
+        }
+
+        const inserted = this.#registerDefinitions(tasks.filter(isDefinition));
+
+        try {
+            const groups: EdgeStep[] = steps.map(([froms, tos]) => [
+                froms.map((task) => this.#lookup(task)),
+                tos.map((task) => this.#lookup(task)),
+            ]);
+
+            // Steps are independent edges, not a sequence of wiring sets: a
+            // left-to-right chain must keep its direction, so each step is
+            // validated on its own after the whole batch is planned.
+            this.#addEdgeSteps(groups);
+        } catch (error) {
+            this.#removeTasks(inserted);
+            throw error;
+        }
+
+        // The overloads carry the accumulated signature and branch state; the
+        // implementation only has to report the instance it mutated.
         return this;
     }
 
@@ -468,12 +550,26 @@ export class DAG<
      * graph unchanged.
      */
     #addEdges(groups: readonly (readonly DAGTask[])[]): void {
-        const planned = new Map<DAGTask, Set<DAGTask>>();
+        const steps: EdgeStep[] = [];
 
         for (let index = 1; index < groups.length; index += 1) {
-            const froms = groups[index - 1];
-            const tos = groups[index];
+            steps.push([groups[index - 1], groups[index]]);
+        }
 
+        this.#addEdgeSteps(steps);
+    }
+
+    /**
+     * Validate and write a batch of independent edge steps.
+     *
+     * Steps keep their own direction; they are not chained to each other, so
+     * `[a, b]` and `[c, b]` from notation like `a >> b << c` both apply.
+     * Planning covers the whole batch before any edge is written.
+     */
+    #addEdgeSteps(steps: readonly EdgeStep[]): void {
+        const planned = new Map<DAGTask, Set<DAGTask>>();
+
+        for (const [froms, tos] of steps) {
             for (const from of froms) {
                 for (const to of tos) {
                     if (from === to) {
@@ -497,14 +593,11 @@ export class DAG<
             }
         }
 
-        for (let index = 1; index < groups.length; index += 1) {
-            assertBranchWiring(groups[index - 1], groups[index], planned);
+        for (const [froms, tos] of steps) {
+            assertBranchWiring(froms, tos, planned);
         }
 
-        for (let index = 1; index < groups.length; index += 1) {
-            const froms = groups[index - 1];
-            const tos = groups[index];
-
+        for (const [froms, tos] of steps) {
             for (const from of froms) {
                 for (const to of tos) {
                     if (from.downstream.has(to)) {

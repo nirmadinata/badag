@@ -48,6 +48,14 @@ A TypeScript SDK for declaring task graphs, wiring dependencies, and finding tas
 
 **Wiring set**: A set of tasks treated as one side of dependency wiring; every task in the set is wired to every task in the adjacent set, while membership in the same set implies no edge between its tasks. Wiring requires tasks on both sides. _Avoid_: task group, group, batch, stage
 
+**Wiring expression**: One dependency statement written in bitshift notation, such as `a >> b >> c`; it names tasks and the operators between them, and produces dependency edges when a DAG parses it. _Avoid_: edge string, chain expression, flow statement
+
+**Wiring notation**: The `>>` and `<<` syntax a wiring expression is written in, where `>>` points from the task on its left to the task on its right and `<<` points back. Operators evaluate left to right and each result is the left operand of the next. _Avoid_: bitshift syntax, Airflow syntax, arrow notation
+
+**Operand**: One task or one wiring set inside a wiring expression. _Avoid_: argument, parameter, term
+
+**Wiring step**: One validated edge between two wiring sets, derived from a wiring expression; `a >> b << c` yields two steps, `a -> b` and `c -> b`. _Avoid_: edge pair, link
+
 **Completion**: The fact that a task has finished executing; completion is supplied as a set of task IDs and carries no success, failure, or skip outcome. _Avoid_: done, terminal state
 
 **Ready task**: A task that has not completed and whose upstream tasks have all completed. Readiness is structural and ignores trigger rules. _Avoid_: runnable task, eligible task

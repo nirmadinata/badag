@@ -2,6 +2,8 @@ export { createDAG, DAG } from "./core/dag/dag";
 
 export { crossDownstream } from "./core/dag/dag-task";
 
+export type { WiringOperand } from "./core/dag/wiring";
+
 export {
     branch,
     delay,

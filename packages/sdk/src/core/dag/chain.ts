@@ -438,6 +438,38 @@ type CheckBranches<
         : true;
 
 /**
+ * `true` when a wiring expression registers no conflicting signature or branch
+ * set, otherwise the error message.
+ *
+ * Direction is deliberately not checked. TypeScript cannot read the literal
+ * `>>`/`<<` segments, so cycles, self edges, and branch routing stay runtime
+ * checks; this type covers only what the operands alone decide.
+ */
+export type ParseProblem<
+    DagName extends string,
+    Signatures,
+    Branches,
+    Operands extends readonly ChainGroup[],
+> =
+    HasBroadNames<Operands> extends true
+        ? true
+        : TooManyGroups<Operands> extends true
+          ? true
+          : CheckBranches<DagName, Branches, Operands> extends infer BranchError
+            ? BranchError extends string
+                ? BranchError
+                : RegisterAll<
+                        Signatures,
+                        FlattenGroups<Operands>,
+                        DagName
+                    > extends infer Next
+                  ? Next extends string
+                      ? Next
+                      : true
+                  : never
+            : never;
+
+/**
  * `true` when the wiring set sequence is valid, otherwise the error message.
  */
 export type ChainProblem<

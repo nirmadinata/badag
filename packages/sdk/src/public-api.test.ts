@@ -24,6 +24,7 @@ import type {
     TaskParamInput,
     TaskParamOutput,
     TriggerRule,
+    WiringOperand,
 } from "./index";
 
 // A generic helper widens names to string, so its chain is not statically
@@ -42,6 +43,14 @@ const createInvalidTriggerRule = () =>
 const createUnregisteredTask = () =>
     // @ts-expect-error - DAGTask is type-only; only DAG mints handles
     new DAGTask(createDAG("etl"), createTask("extract", { fn: () => "raw" }));
+
+const parseStringOperands = () =>
+    // @ts-expect-error - operands are tasks, not strings
+    createDAG("etl").parse`${"extract"} >> ${"load"}`;
+
+const parseNumberOperands = () =>
+    // @ts-expect-error - operands are tasks, not numbers
+    createDAG("etl").parse`${createTask("extract", { fn: () => 0 })} >> ${0}`;
 
 const connectRaw = (task: DAGTask, other: DAGTask): void => {
     // @ts-expect-error - raw edge insertion is not public
@@ -217,6 +226,105 @@ describe("public task types", () => {
 });
 
 describe("compile-time chain validation", () => {
+    it("types parse operands without adding static edge state", () => {
+        const extract = createTask("extract", { fn: () => "raw" });
+        const transform = createTask("transform", { fn: () => "clean" });
+        const load = createTask("load", { fn: () => "stored" });
+
+        const dag = createDAG("etl").parse`${extract} >> ${[transform, load]}`;
+
+        expect(dag.tasks.size).toBe(3);
+        expectTypeOf(dag).toExtend<DAG<"etl">>();
+        expectTypeOf<WiringOperand>().toEqualTypeOf<
+            TaskLike | readonly TaskLike[]
+        >();
+        expectTypeOf(extract).toExtend<WiringOperand>();
+        expectTypeOf([extract, transform]).toExtend<WiringOperand>();
+
+        expectTypeOf<
+            readonly [TaskLike, readonly TaskLike[]]
+        >().not.toExtend<WiringOperand>();
+
+        expect(parseStringOperands).toBeTypeOf("function");
+        expect(parseNumberOperands).toBeTypeOf("function");
+    });
+
+    it("accumulates parsed tasks as signatures, like chain", () => {
+        const extract = createTask("extract", { fn: () => "raw" });
+        const load = createTask("load", { fn: () => "stored" });
+
+        const parsed = createDAG("etl").parse`${extract} >> ${[load]}`;
+
+        // Re-passing the same definition is allowed, as in `chain`: the
+        // signature already registered is identical, not merely a duplicate.
+        expect(() => parsed.parse`${extract} >> ${load}`).not.toThrow();
+        expect(() => parsed.parse`${extract}`).not.toThrow();
+        expect(parsed.tasks.size).toBe(2);
+        expectTypeOf(parsed.getTask("extract")).toEqualTypeOf<
+            DAGTask<"extract"> | undefined
+        >();
+    });
+
+    it("rejects a duplicate registered through chain or parse", () => {
+        const extract = createTask("extract", { fn: () => "raw" });
+        const dag = createDAG("etl").parse`${extract}`;
+        const duplicate = createTask("extract", { fn: () => 1 });
+
+        // @ts-expect-error - parse registered "extract" with another signature
+        const viaChain = () => dag.chain(duplicate);
+
+        // @ts-expect-error - parse registered "extract" with another signature
+        const viaParse = () => dag.parse`${duplicate}`;
+
+        expect(viaChain).toThrow('Task "extract" already exists in DAG "etl"');
+        expect(viaParse).toThrow('Task "extract" already exists in DAG "etl"');
+    });
+
+    it("rejects a reparsed branch with a different declared set", () => {
+        const wide = branch("route", {
+            branches: ["us", "eu"],
+            choose: () => "us",
+        });
+
+        const narrow = branch("route", {
+            branches: ["us"],
+            choose: () => "us",
+        });
+
+        const dag = createDAG("redeclare").parse`${wide}`;
+
+        // @ts-expect-error - same name, different declared branches
+        const conflict = () => dag.parse`${narrow}`;
+
+        expect(conflict).toThrow(
+            'Task "route" already exists in DAG "redeclare"'
+        );
+    });
+
+    it("opts out of parse checks when the DAG type is widened", () => {
+        const extract = createTask("extract", { fn: () => "raw" });
+        const dag: DAG = createDAG("etl");
+        const duplicate = createTask("extract", { fn: () => 1 });
+
+        expect(() => dag.parse`${extract}`).not.toThrow();
+        expect(() => dag.parse`${duplicate}`).toThrow(/already exists/u);
+    });
+
+    it("keeps parse out of the static edge state", () => {
+        const extract = createTask("extract", { fn: () => "raw" });
+        const load = createTask("load", { fn: () => "stored" });
+        const sink = createTask("sink", { fn: () => "done" });
+
+        const dag = createDAG("etl").parse`${extract} >> ${load}`
+            .parse`${load} >> ${sink}`;
+
+        // TypeScript never saw the operators, so the edges it would need to
+        // close a cycle are absent; the runtime check still rejects it.
+        expect(() => dag.chain(sink, extract)).toThrow(
+            'Dependency "sink" -> "extract" creates a cycle'
+        );
+    });
+
     it("preserves literal names and handle types", () => {
         const extract = createTask("extract", { fn: () => "raw" });
         const dag = createDAG("typed").chain(extract);

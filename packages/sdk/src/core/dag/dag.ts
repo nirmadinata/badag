@@ -14,6 +14,8 @@ import type {
 import { DAGTask, isDefinition, normalizeTasks, stateOf } from "./dag-task";
 import type { TaskDefinition, TaskLike, TaskOrTasks } from "./dag-task";
 import type { DAGJson, TaskJson, TaskJsonBase } from "./types";
+import { findViolations } from "./validation";
+import type { DAGViolation } from "./validation";
 import { parseWiringExpression } from "./wiring";
 import type { WiringOperand } from "./wiring";
 
@@ -306,6 +308,25 @@ export class DAG<
         // The overloads carry the accumulated signature and branch state; the
         // implementation only has to report the instance it mutated.
         return this;
+    }
+
+    /**
+     * Return every problem in the graph without throwing.
+     *
+     * The wiring methods reject malformed graphs as they run, so a DAG built
+     * only through them validates clean. This method exists for graphs that
+     * reach a checkpoint later — a snapshot, a graph restored from storage, a
+     * half-built DAG before execution — and for the states wiring cannot see at
+     * the time of a call: a branch task registered alone declares the branches
+     * it must route to, and only pairing it with those tasks satisfies that.
+     *
+     * Findings are ordered edges, cycles, then branch routing, and `tasks`
+     * names the tasks involved. An empty array means the graph is acyclic,
+     * internally consistent, and every branch routes exactly to its declared
+     * branches.
+     */
+    validate(): readonly DAGViolation[] {
+        return findViolations(this.#name, [...this.#tasks.values()]);
     }
 
     /**

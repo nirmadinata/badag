@@ -3,9 +3,14 @@ import type { TrimTaskName } from "./types";
 /** Task names are alphanumeric words joined by single dashes or underscores. */
 const TASK_NAME_PATTERN = /^[\p{L}\p{N}]+(?:[-_][\p{L}\p{N}]+)*$/u;
 
+/** Whether an already-trimmed name is a valid task name. */
+export function isTaskName(name: string): boolean {
+    return TASK_NAME_PATTERN.test(name);
+}
+
 /** Validate an already-trimmed task name. */
 export function assertTaskName(name: string): void {
-    if (!TASK_NAME_PATTERN.test(name)) {
+    if (!isTaskName(name)) {
         throw new Error(
             `Task name "${name}" must use letters or numbers separated by "-" or "_"`
         );

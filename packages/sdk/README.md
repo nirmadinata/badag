@@ -716,6 +716,56 @@ dag.chain(duplicate); // error: task "a" already exists in DAG "etl"
 - Handles from `getTask()`, `topologicalSort()`, and `getReadyTasks()` carry the erased `AnyTaskDefinition`, so they add edges but no signatures; type-level duplicate detection compares regular `fn` signatures, while runtime remains authoritative for handle-only wiring.
 - Regular definitions with the same name and inferred `fn` type but different `fn` source cannot be distinguished statically; non-regular definitions are opaque to type-level signature checks. Runtime still rejects collisions.
 
+### Validating a graph
+
+`validate()` returns every problem in the graph as a list, without throwing. The wiring methods reject malformed graphs as they run, so a DAG built only through them validates clean; the method is for graphs that reach a checkpoint later — a snapshot, a graph restored from storage, a half-built DAG before execution — and for the states wiring cannot see at the time of a call.
+
+```ts
+const route = branch("route", { branches: ["us", "eu"], choose: () => "us" });
+
+const dag = createDAG("daily").chain(
+    route,
+    task("extract", { fn: () => "raw" })
+);
+
+dag.validate();
+// [
+//   { code: "unrouted-branch", subjects: ["route", "us"], message: 'Branch "route" must route to declared branch "us"' },
+//   { code: "unrouted-branch", subjects: ["route", "eu"], message: 'Branch "route" must route to declared branch "eu"' },
+// ]
+```
+
+A branch task declares the branches a scheduler may follow, so registering one alone leaves it temporarily unrouted; pairing it with the tasks that carry those names clears the finding. Checking `validate()` before execution catches exactly that.
+
+Every finding has a `code`, the `subjects` involved, and a `message` in the same wording the wiring methods throw. `subjects` names both endpoints for an edge, the traversal path (closing task repeated) for a cycle, and `[branch, declaredName]` for a branch finding. Branch and trigger findings name a declared branch or a DAG, not a task, so the field is called `subjects` rather than `tasks`. Findings are ordered edges, cycles, branch routing, then trigger findings.
+
+| Code | Meaning |
+| --- | --- |
+| `cycle` | An edge joins a task back to one of its own ancestors |
+| `self-edge` | A task lists itself as an upstream or downstream task |
+| `foreign-edge` | An edge endpoint is not registered in this DAG |
+| `inconsistent-edge` | One side of an edge records a dependency the other side does not |
+| `unrouted-branch` | A branch task declares a branch name it never routes to |
+| `undeclared-branch-target` | A branch task routes to a task it never declared |
+| `duplicate-declared-branch` | A branch task declares the same branch name more than once |
+| `invalid-declared-branch` | A branch task declares a name that cannot be a task name |
+| `self-trigger` | A trigger task starts the DAG that contains it |
+
+`duplicate-declared-branch` and `invalid-declared-branch` are reachable through the factories: `branches: ["us", "us"]` and a declared name like `""` or `"united states"` are both accepted by `branch()`, and neither can be satisfied by wiring. A name that is invalid is reported as `invalid-declared-branch` rather than additionally as `unrouted-branch`, because no task could ever carry it.
+
+An empty array means the graph is acyclic, internally consistent, and every branch routes exactly to its declared branches.
+
+Reporting rules, each pinned by a test:
+
+- A self edge yields `self-edge` only, never an additional `cycle`, whether it is recorded on one side or both.
+- Each distinct cycle yields one finding, named by the path that closes it with the first task repeated. Cycles that share a task are separate findings.
+- An edge yields at most one finding: the downstream side and the upstream side report disjoint conditions on the same edge.
+- A mutual cross-DAG edge yields one finding per direction, so the two `tasks` lists differ.
+- Foreign targets are reported but not traversed; their own edges belong to the DAG that owns them, so one graph's report never includes another's cycles.
+- A branch finding is per branch name, so a repeated declared name yields one finding, and an invalid declared name is reported once as `invalid-declared-branch`.
+- A trigger comparison trims both names, so `dagName: " daily "` inside DAG `"daily"` is still a self-trigger. Names that differ by case are distinct DAGs.
+- `validate()` only reads the graph, so calling it never changes state.
+
 Edge methods accept either a `DAGTask` handle or a definition; an unseen definition is registered in this DAG, then resolved by task ID. `addDependencies()` links every upstream task to every downstream task. `crossDownstream()` is the exception and takes handles only.
 
 Read links through `task.upstream` and `task.downstream` (both `ReadonlySet<DAGTask>`), and change them only through the methods above so validation still runs. Every edge insertion rejects:
@@ -878,7 +928,7 @@ grouped.toJSON().tasks.map(({ name, upstream, downstream }) => ({
 | Export | Kind | Summary |
 | --- | --- | --- |
 | `createDAG` | function | `createDAG(name)` returns a `DAG`; keeps the literal name type, so `chain()` checks apply |
-| `DAG` | class | `name`, `tasks`, `getTask()`, `addDependency()`, `addDependencies()`, `chain()`, `parse`, `topologicalSort()`, `getReadyTasks()`, `toJSON()` |
+| `DAG` | class | `name`, `tasks`, `getTask()`, `addDependency()`, `addDependencies()`, `chain()`, `parse`, `validate()`, `topologicalSort()`, `getReadyTasks()`, `toJSON()` |
 | `DAGTask` | type | Registered task handle; `id`, `name`, `kind`, `definition`, `description`, `config`, `triggerRule`, `upstream`, `downstream`, `setUpstream()`, `setDownstream()`, `dependsOn()`. Minted by `DAG`, not constructible by consumers |
 | `task` | function | Creates a regular task definition from a name and `{ fn }` input |
 | `sensor` | function | Creates a sensor definition storing a predicate and optional `pokeIntervalMs`; the SDK does not poll |
@@ -908,6 +958,9 @@ grouped.toJSON().tasks.map(({ name, upstream, downstream }) => ({
 | `TaskLike` | type | A `DAGTask` or a task definition returned by a factory |
 | `TaskOrTasks` | type | `TaskLike \| readonly TaskLike[]` |
 | `WiringOperand` | type | `TaskLike \| readonly TaskLike[]` — one operand of a wiring expression |
+| `DAGViolation` | interface | One `validate()` finding: `code`, `subjects`, `message` |
+| `DAGViolationCode` | type | Value union of `DAG_VIOLATION_ENUM` |
+| `DAG_VIOLATION_ENUM` | object | Enum-like map of the `validate()` finding codes |
 | `TaskJson` | type | Discriminated union of serialized task kinds; includes `kind` and kind-specific serializable fields |
 | `DAGJson` | interface | `{ name, tasks }` returned by `toJSON()` |
 | `CreateTask` | type | Call signature of `task(name, input)` |
@@ -931,6 +984,7 @@ grouped.toJSON().tasks.map(({ name, upstream, downstream }) => ({
 - `DAG` carries internal type parameters for the definitions and edges added through `chain()`. Annotating a value as plain `DAG` intentionally opts out of the compile-time checks above.
 - `parse` types each operand as a task or a flat list of tasks, so a string, a number, or a nested list fails to typecheck. It adds those definitions to the DAG's type state as signatures and declared branch sets, like `chain`, so duplicate definitions are caught at compile time; it adds no edges, because TypeScript cannot infer the literal `>>`/`<<` segments. Use `chain()` when compile-time cycle detection matters.
 - `toJSON()` returns a fresh `DAGJson` snapshot with `kind`, kind-specific serializable fields, and edges keyed by task name; functions are removed.
+- `validate()` returns a readonly `DAGViolation[]` and never throws; the codes are a closed set, so a scheduler can switch on `code` exhaustively.
 
 ## Errors
 

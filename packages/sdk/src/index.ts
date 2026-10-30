@@ -2,6 +2,10 @@ export { createDAG, DAG } from "./core/dag/dag";
 
 export { crossDownstream } from "./core/dag/dag-task";
 
+export { DAG_VIOLATION_ENUM } from "./core/dag/validation";
+
+export type { DAGViolation, DAGViolationCode } from "./core/dag/validation";
+
 export type { WiringOperand } from "./core/dag/wiring";
 
 export {

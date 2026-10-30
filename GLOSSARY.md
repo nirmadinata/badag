@@ -28,13 +28,19 @@ A TypeScript SDK for declaring task graphs, wiring dependencies, and finding tas
 
 **Branch task**: A task that chooses one or more named branches for a scheduler to follow. _Avoid_: router, switch
 
-**Declared branch**: A branch name listed in a branch task's `branches` set, which the wiring step immediately after that task must route to exactly. A branch task with no declared branches is unconstrained. _Avoid_: branch target, branch child, branch task
+**Declared branch**: A branch name listed in a branch task's `branches` set. A branch task stays unrouted until one wiring step routes it, and that single step must name exactly the declared branches — no missing name, no extra one. Routing cannot be assembled across steps. A branch task with no declared branches is unconstrained; a branch task declaring an empty set constrains nothing. _Avoid_: branch target, branch child, branch task
 
 **Short-circuit task**: A task whose condition tells a scheduler whether downstream tasks should run. _Avoid_: gate, guard
 
-**Trigger task**: A task that starts another DAG, optionally waiting for that DAG to finish. _Avoid_: child DAG task, launcher
+**Trigger task**: A task that starts a different DAG, optionally waiting for it to finish. A trigger task that names the DAG containing it is a self trigger: valid to declare, impossible to execute. _Avoid_: child DAG task, launcher
 
 **Registered task**: A task definition attached to a specific DAG, with a task ID and any dependency edges. _Avoid_: node, vertex, job
+
+**Violation**: One problem found when auditing a graph, reported by `DAG.validate()` as a code, the names involved, and a message. A violation concerns names rather than only tasks: a branch finding names a declared branch, and a trigger finding names a DAG. Distinct from an error: the wiring methods throw errors, while a violation is returned. _Avoid_: error, issue, warning
+
+**Graph audit**: A read-only pass over the registered tasks and their edges that returns violations instead of throwing. Stateless and non-destructive, so it is safe to run at any point in a DAG's life. _Avoid_: check, lint, verification
+
+**Unrouted branch**: The violation for a declared branch the branch task does not route to. A branch task is unrouted until a single wiring step routes it to exactly its declared branches, so a freshly registered branch is expected to be unrouted. _Avoid_: missing branch, incomplete branch, dangling branch
 
 **Task name**: The unique human-readable name of a task within one DAG; uniqueness is scoped to that DAG. _Avoid_: label, slug, key
 
@@ -67,3 +73,9 @@ A TypeScript SDK for declaring task graphs, wiring dependencies, and finding tas
 **Task name collision**: A task definition whose name matches another task in the same DAG but whose task ID differs; registration is rejected. _Avoid_: duplicate name
 
 **Task ID collision**: A task definition whose task ID matches a task already registered in the same DAG but whose name differs; registration is rejected. Effectively unreachable: because the name is part of the ID, a definition that reuses an ID under a new name has no ordinary cause. _Avoid_: duplicate ID
+
+**Duplicate declared branch**: The violation for a branch task that lists the same declared branch name more than once. A repeated name can only ever be routed to by one task, so the second listing states nothing. _Avoid_: repeated branch, duplicate branch
+
+**Invalid declared branch**: The violation for a declared branch name that could never be a task name, such as an empty or whitespace-only name. No wiring can satisfy it, so it is reported as invalid rather than as unrouted. _Avoid_: bad branch name, malformed branch
+
+**Self trigger**: The violation for a trigger task whose target is the DAG that contains it. The declaration is legal, but running it would start a second copy of the same graph, so no scheduler can execute it. _Avoid_: recursive trigger, trigger loop

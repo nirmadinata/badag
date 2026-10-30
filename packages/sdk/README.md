@@ -306,7 +306,7 @@ Use `TASK_KIND_ENUM` wherever a kind is compared or stored. It exposes `Task`, `
 | `task(name, { fn })` | `TASK_KIND_ENUM.Task` | `fn` | `unknown` |
 | `sensor(name, { predicate, pokeIntervalMs? })` | `TASK_KIND_ENUM.Sensor` | `predicate`, optional `pokeIntervalMs` | `boolean` |
 | `delay(name, { durationMs })` | `TASK_KIND_ENUM.Delay` | `durationMs` | none |
-| `branch(name, { branches?, choose })` | `TASK_KIND_ENUM.Branch` | `branches`, `choose` | the chosen branch names |
+| `branch(name, { branches?, choose })` | `TASK_KIND_ENUM.Branch` | `branches`, `choose` | the chosen branch names; declared `branches` constrain the next wiring step |
 | `shortCircuit(name, { condition })` | `TASK_KIND_ENUM.ShortCircuit` | `condition` | `boolean` |
 | `trigger(name, { dagName, waitForCompletion? })` | `TASK_KIND_ENUM.Trigger` | `dagName`, `waitForCompletion` | none |
 
@@ -486,6 +486,26 @@ const byRegion = branch("by-region", {
 await byRegion.choose({ id: "by-region-id", name: "by-region" }); // ["us", "eu"]
 ```
 
+Declare `branches` as well to make the names a wiring contract:
+
+```ts
+const route = branch("route", {
+    branches: ["us", "eu"],
+    choose: (ctx) => (ctx.name === "route" ? ["us", "eu"] : "us"),
+});
+
+const dag = createDAG("regions").chain(
+    route,
+    [task("us", { fn: () => "us" }), task("eu", { fn: () => "eu" })]
+);
+```
+
+With `branches` declared, the wiring step directly after the branch task must
+name exactly those branches: routing to an undeclared task, or declaring a
+branch the step does not route to, is rejected at compile time and at runtime.
+A branch without `branches` stays unchecked, and only the branch's own
+downstream step is constrained — what those tasks require next is not.
+
 A scheduler uses the returned name(s) to decide which downstream tasks to run.
 
 #### Short-circuit
@@ -645,6 +665,7 @@ dag.chain(duplicate); // error: task "a" already exists in DAG "etl"
 
 - The type-level duplicate-definition check compares task names and inferred function signatures. Re-passing the same definition is allowed because runtime registration is idempotent; a same-name definition with a different function type is rejected.
 - Adjacent wiring sets that share a task are rejected as self-edges.
+- A branch task with a declared `branches` set must be followed by a wiring set naming exactly those branches; the same rule is enforced at runtime for every edge entry point.
 - Cycles are found by walking the edges tracked in the DAG type.
 - Static checks run for `chain()` calls with up to 40 positional wiring sets. Larger calls compile but are runtime-checked only, and their definitions and edges are not added to the DAG type state.
 - The checks follow the value returned by `chain()`. If the result is discarded (`dag.chain(a, b);`), later calls are runtime-checked only. `addDependency()`, `addDependencies()`, `setUpstream()`, `setDownstream()`, and `crossDownstream()` are likewise runtime-checked.
@@ -880,6 +901,9 @@ grouped.toJSON().tasks.map(({ name, upstream, downstream }) => ({
 | `Trigger DAG name cannot be empty` | `trigger()` |
 | `Both tasks must belong to this DAG` | `addDependency()`, `addDependencies()`, and the wiring methods |
 | `A task cannot depend on itself` | `addDependency()`, `addDependencies()`, and the wiring methods |
+| `Branch "<branch>" cannot route to "<task>"; declared branches are "<name>", ...` | `chain()` and the edge methods when a declared branch set does not contain the task |
+| `Branch "<branch>" cannot route to "<task>"; it declares no branches` | Same, for a branch declaring an empty `branches` set |
+| `Branch "<branch>" must route to declared branch "<name>"` | Same, when a declared branch is left unrouted by that wiring step |
 | `Dependency "<from>" -> "<to>" creates a cycle` | `addDependency()`, `addDependencies()`, and the wiring methods |
 | `DAG "<name>" contains a cycle` | `topologicalSort()` — defensive, unreachable via the public API |
 

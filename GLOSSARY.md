@@ -28,6 +28,8 @@ A TypeScript SDK for declaring task graphs, wiring dependencies, and finding tas
 
 **Branch task**: A task that chooses one or more named branches for a scheduler to follow. _Avoid_: router, switch
 
+**Declared branch**: A branch name listed in a branch task's `branches` set, which the wiring step immediately after that task must route to exactly. A branch task with no declared branches is unconstrained. _Avoid_: branch target, branch child, branch task
+
 **Short-circuit task**: A task whose condition tells a scheduler whether downstream tasks should run. _Avoid_: gate, guard
 
 **Trigger task**: A task that starts another DAG, optionally waiting for that DAG to finish. _Avoid_: child DAG task, launcher

@@ -3,7 +3,13 @@ import { taskBehaviorSource } from "@/core/task/identity";
 import { TASK_KIND_ENUM } from "@/core/task/kind";
 import type { TaskKind } from "@/core/task/kind";
 
-import type { ChainProblem, NextEdges, NextSignatures } from "./chain";
+import { assertBranchWiring } from "./branch-wiring";
+import type {
+    ChainProblem,
+    NextBranches,
+    NextEdges,
+    NextSignatures,
+} from "./chain";
 import { DAGTask, isDefinition, normalizeTasks, stateOf } from "./dag-task";
 import type { TaskDefinition, TaskLike, TaskOrTasks } from "./dag-task";
 import type { DAGJson, TaskJson, TaskJsonBase } from "./types";
@@ -61,15 +67,17 @@ function taskJsonBase(task: DAGTask): Omit<TaskJsonBase<TaskKind>, "kind"> {
 /**
  * An Airflow-inspired directed acyclic graph.
  *
- * `DagName`, `Signatures`, and `Edges` are compile-time bookkeeping for
- * `chain()`: the returned DAG carries the registrations and edges added by the
- * call. Keep calls fluent (or keep the returned value) for static validation;
- * the runtime checks cover every wiring path.
+ * `DagName`, `Signatures`, `Edges`, and `Branches` are compile-time
+ * bookkeeping for `chain()`: the returned DAG carries the registrations,
+ * edges, and declared branch sets added by the call. Keep calls fluent (or
+ * keep the returned value) for static validation; the runtime checks cover
+ * every wiring path.
  */
 export class DAG<
     DagName extends string = string,
     Signatures = Record<never, never>,
     Edges = Record<never, never>,
+    Branches = Record<never, never>,
 > {
     readonly #name: DagName;
     // Same task objects, two indexes: name drives public lookup and order;
@@ -176,13 +184,20 @@ export class DAG<
      */
     chain<const Groups extends readonly TaskOrTasks[]>(
         ...groups: Groups &
-            (ChainProblem<DagName, Signatures, Edges, Groups> extends true
+            (ChainProblem<
+                DagName,
+                Signatures,
+                Edges,
+                Branches,
+                Groups
+            > extends true
                 ? unknown
-                : ChainProblem<DagName, Signatures, Edges, Groups>)
+                : ChainProblem<DagName, Signatures, Edges, Branches, Groups>)
     ): DAG<
         DagName,
         NextSignatures<DagName, Signatures, Groups>,
-        NextEdges<Edges, Groups>
+        NextEdges<Edges, Groups>,
+        NextBranches<DagName, Branches, Groups>
     >;
     chain(...groups: TaskOrTasks[]): this {
         const normalized = groups.map((group) => normalizeTasks(group));
@@ -480,6 +495,10 @@ export class DAG<
                     planned.set(from, next);
                 }
             }
+        }
+
+        for (let index = 1; index < groups.length; index += 1) {
+            assertBranchWiring(groups[index - 1], groups[index], planned);
         }
 
         for (let index = 1; index < groups.length; index += 1) {

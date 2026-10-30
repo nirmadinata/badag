@@ -303,6 +303,116 @@ describe("compile-time chain validation", () => {
         );
     });
 
+    it("rejects branch wiring outside the declared branches", () => {
+        const route = branch("route", {
+            branches: ["us", "eu"],
+            choose: () => "us",
+        });
+
+        const us = createTask("us", { fn: () => 0 });
+        const eu = createTask("eu", { fn: () => 0 });
+        const apac = createTask("apac", { fn: () => 0 });
+
+        const valid = createDAG("branches").chain(route, [us, eu]);
+
+        // @ts-expect-error - apac is not a declared branch
+        const undeclared = () => valid.chain(route, apac);
+
+        expect(undeclared).toThrow(
+            'Branch "route" cannot route to "apac"; declared branches are "us", "eu"'
+        );
+
+        // @ts-expect-error - eu is declared but not routed
+        const incomplete = () => createDAG("partial").chain(route, us);
+
+        expect(incomplete).toThrow(
+            'Branch "route" must route to declared branch "eu"'
+        );
+    });
+
+    it("accepts a branch wired to exactly its declared branches", () => {
+        const route = branch("route", {
+            branches: ["us", "eu"],
+            choose: () => "us",
+        });
+
+        const dag = createDAG("branch-ok").chain(route, [
+            createTask("us", { fn: () => 0 }),
+            createTask("eu", { fn: () => 0 }),
+        ]);
+
+        expect(dag.tasks.size).toBe(3);
+    });
+
+    it("accepts a split declaration and wiring across kept calls", () => {
+        const route = branch("route", {
+            branches: ["us"],
+            choose: () => "us",
+        });
+
+        const us = createTask("us", { fn: () => 0 });
+
+        // The declaration lives on the DAG type, so a later call is checked.
+        const dag = createDAG("split").chain(route).chain(route, us);
+
+        expect(dag.tasks.size).toBe(2);
+    });
+
+    it("accepts a branch that declares no branches", () => {
+        const dag = createDAG("free").chain(
+            branch("route", { choose: () => "anything" }),
+            createTask("anything", { fn: () => 0 })
+        );
+
+        expect(dag.tasks.size).toBe(2);
+    });
+
+    it("accepts a branch wired to another branch task", () => {
+        const dag = createDAG("nested").chain(
+            branch("route", { branches: ["next"], choose: () => "next" }),
+            branch("next", { branches: ["us"], choose: () => "us" }),
+            createTask("us", { fn: () => 0 })
+        );
+
+        expect(dag.tasks.size).toBe(3);
+    });
+
+    it("rejects an empty declared set routing anywhere", () => {
+        const empty = branch("route", {
+            branches: [] as const,
+            choose: () => [] as const,
+        });
+
+        const routed = () =>
+            // @ts-expect-error - an empty declaration routes nowhere
+            createDAG("empty").chain(empty, createTask("us", { fn: () => 0 }));
+
+        expect(routed).toThrow(
+            'Branch "route" cannot route to "us"; it declares no branches'
+        );
+    });
+
+    it("rejects a same-name branch with a different declared set", () => {
+        const wide = branch("route", {
+            branches: ["us", "eu"],
+            choose: () => "us",
+        });
+
+        const narrow = branch("route", {
+            branches: ["us"],
+            choose: () => "us",
+        });
+
+        const dag = createDAG("redeclare").chain(wide);
+
+        // @ts-expect-error - same name, different declared branches
+        const conflict = () => dag.chain(narrow);
+
+        expect(conflict).toThrow(
+            'Task "route" already exists in DAG "redeclare"'
+        );
+    });
+
     it("accepts repeated, diamond, and generic wiring", () => {
         const extract = createTask("extract", { fn: () => "raw" });
         const transform = createTask("transform", { fn: () => "clean" });

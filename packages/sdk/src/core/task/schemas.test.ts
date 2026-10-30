@@ -311,12 +311,32 @@ describe("branch identity", () => {
             createDAG("branches")
                 .chain(wide)
                 .chain(
+                    // @ts-expect-error - same name, different declared branches
                     branch("route", {
                         branches: ["us", "eu", "apac"],
                         choose: () => "us",
                     })
                 )
         ).toThrow('Task "route" already exists in DAG "branches"');
+    });
+
+    it("rejects a reordered branches set as a name collision", () => {
+        const base = createDAG("reorder").chain(
+            branch("route", {
+                branches: ["us", "eu"],
+                choose: () => "us",
+            })
+        );
+
+        expect(() =>
+            base.chain(
+                // @ts-expect-error - reordered branches are a different behavior source
+                branch("route", {
+                    branches: ["eu", "us"],
+                    choose: () => "us",
+                })
+            )
+        ).toThrow('Task "route" already exists in DAG "reorder"');
     });
 
     it("reuses an identical branches set and chooser", () => {

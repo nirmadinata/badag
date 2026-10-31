@@ -7,11 +7,8 @@ export default defineConfig({
         alwaysBundle: ["@badag/core"],
         onlyBundle: ["@standard-schema/spec"],
     },
-    // The tsgo declaration generator reads one tsconfig, so the build config
-    // includes core's source alongside the SDK entry point.
     dts: {
         generator: "tsgo",
-        tsconfig: "./tsconfig.build.json",
     },
     exports: true,
 });

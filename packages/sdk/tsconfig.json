@@ -14,7 +14,10 @@
         "esModuleInterop": true,
         "isolatedModules": true,
         "verbatimModuleSyntax": true,
-        "skipLibCheck": true
+        "skipLibCheck": true,
+        // Core is imported from source, so both trees share one program.
+        "rootDir": ".."
     },
-    "include": ["src"]
+    "include": ["src", "../core/src"],
+    "exclude": ["../core/src/**/*.test.ts"]
 }

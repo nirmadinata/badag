@@ -1,0 +1,3 @@
+# Task group is reserved for Airflow-style grouping
+
+The SDK calls the anonymous task sets accepted by `chain()` and the edge methods _wiring sets_, not _task groups_, because Airflow's `TaskGroup` is a named, nestable organizational cluster with its own identity and UI semantics, and reusing that word for a nameless complete-bipartite wiring endpoint would make the two concepts indistinguishable if the Airflow feature is added later. A future task group would expose its tasks as a wiring set rather than replace the term. The trade-off is deliberate: Airflow itself has no dedicated name for cross-product wiring (it uses plain lists), so the SDK invents one rather than spending the Airflow term on a different concept.

@@ -1,0 +1,23 @@
+# Validation reports violations instead of throwing
+
+`DAG.validate()` returns a readonly list of violations rather than throwing on the first problem. Every other mutation path throws, so this is a deliberate split: the wiring methods refuse to build a malformed graph, and `validate()` audits a graph that already exists.
+
+The exception is not a convenience. A caller that wants "is this graph fit to execute, and if not, what is wrong" cannot use a throwing API: the first error hides the rest, and catching an error to inspect its message string is not a contract. A list is. Each `DAGViolation` carries a `code` from a closed set, the `subjects` involved, and a `message` worded exactly as the wiring methods word their errors, so one vocabulary serves both paths.
+
+## Consequences
+
+- `validate()` is not redundant with the wiring checks. Four findings are reachable through the public factories today, with no wiring step and no tampering: a branch registered alone is unrouted (`chain()` only checks a branch against the wiring step that adds it), a branch may declare a repeated name, a branch may declare a name that cannot be a task name at all, and a trigger may target the DAG that contains it. None of these are rejected by a mutator, because no mutator inspects them; `validate()` is the only place they can surface. That is what makes "declare now, wire later" safe.
+- The edge and cycle codes are unreachable through the public methods, which reject foreign handles, self edges, and cycles as they run. They are kept because `validate()` is the trust boundary for a graph that did not come from those methods — a snapshot, a restored graph, a hand-built one — and a trust boundary that only checks what its own caller already guarantees checks nothing. The declared-name and trigger codes are different: those are reachable through the factories, so their checks are load-bearing rather than defensive.
+- Edge consistency is checked in both directions. `downstream` and `upstream` are separate sets, written together by `#addEdgeSteps`; a half-written pair is invisible to `topologicalSort()` and to the cycle check, both of which walk one direction only, so validation is the only place that can see it. The two walks are not symmetric bookkeeping: each reports a condition the other cannot (missing upstream record vs. missing downstream record), so an edge yields at most one finding without any deduplication.
+- A self edge is reported as `self-edge`, not additionally as `cycle`. Reporting it twice would force every consumer to deduplicate before acting.
+- Each distinct cycle is reported once, at the back edge that closes it. A depth-first walk that closes a task after exploring it emits each cycle exactly once and still finds separate cycles that share tasks, so no deduplication pass is needed; the obvious "skip if any task was already reported" shortcut is wrong, because a figure-eight graph has two real, separate cycles sharing one task.
+- Foreign edge targets are reported but not traversed. Their edges belong to the DAG that owns them, and following them would let one graph's problems leak into another's report.
+- The involved names are called `subjects`, not `tasks`. Branch findings name a declared branch and trigger findings name a DAG, so a field called `tasks` would assert something false about two of the nine codes. One name that is always accurate beats a narrower one that matches the majority case.
+- `validate()` is pure and takes no arguments, so it can run at any point without changing state. That also means it always reflects the current graph: there is no validated flag to go stale.
+
+## Considered options
+
+- **Throw on the first violation**, matching every other method. Rejected: it makes the method pointless for its actual use, since the wiring methods already throw before a bad graph can exist.
+- **Return a boolean.** Rejected: "invalid" without a reason forces the caller to re-derive the cause, and there is no structured way to report several problems.
+- **Make validation part of `topologicalSort()` or `toJSON()`.** Rejected: both are used on graphs that are expected to be valid, and turning them into failable audits would be a breaking change in meaning rather than signature. A separate method can be called where it is wanted.
+- **A static `DAG.validate(json)` that works on an unregistered snapshot.** Rejected for now: it needs a deserializer, which does not exist, and a static form would have to rebuild tasks to reuse the checks. Instance validation covers the reachable case and can be extended without changing this API.

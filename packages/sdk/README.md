@@ -72,62 +72,91 @@ import { createDAG, type DAGTask, sensor, task } from "@badag/sdk";
 
 ## Quick start
 
-The example below builds this graph:
+The example below uses all six task kinds: a `sensor` waits for the source to exist, a `task` extracts, a `branch` picks a region, a `delay` settles, a `shortCircuit` can skip the report, and a `trigger` starts another DAG. It builds this graph:
 
 ```mermaid
 graph LR
-    A[A] --> D[D]
-    A --> B[B]
-    B --> E[E]
-    B --> C[C]
-    B --> G[G]
-    D --> E
-    C --> G
-    E --> F[F]
-    G --> F
+    S["source-ready<br/>sensor"] --> X["extract<br/>task"]
+    X --> R["route<br/>branch"]
+    R --> US["us<br/>task"]
+    R --> EU["eu<br/>task"]
+    US --> W["settle<br/>delay"]
+    EU --> W
+    W --> G["gate<br/>short_circuit"]
+    G --> P["report<br/>task"]
+    P --> C["start-child<br/>trigger"]
 ```
 
 ```ts
-import { createDAG, task, TASK_KIND_ENUM } from "@badag/sdk";
+import {
+    branch,
+    createDAG,
+    delay,
+    sensor,
+    shortCircuit,
+    task,
+    trigger,
+} from "@badag/sdk";
 
-const a = task("A", {
-    fn: async (ctx) => `${ctx.name}: extracted`,
+const sourceReady = sensor("source-ready", {
+    predicate: async () => bucketHasData(),
+    pokeIntervalMs: 60_000,
 });
-const b = task("B", {
-    fn: async (ctx) => `${ctx.name}: normalized`,
-});
-const c = task("C", {
-    fn: async (ctx) => `${ctx.name}: aggregated`,
-});
-const d = task("D", { fn: async (ctx) => `${ctx.name}: joined` });
-const e = task("E", { fn: async (ctx) => `${ctx.name}: scored` });
-const f = task("F", {
-    fn: async (ctx) => `${ctx.name}: published`,
-});
-const g = task("G", { fn: async (ctx) => `${ctx.name}: archived` });
 
-const dag = createDAG("example")
-    .chain(a, [d, b])
-    .chain(d, e)
-    .chain(b, [e, c, g])
-    .chain(c, g)
-    .chain(e, f)
-    .chain(g, f);
+const extract = task("extract", {
+    fn: (ctx) => ({ source: ctx.name, rows: 42 }),
+});
 
-for (const registered of dag.topologicalSort()) {
-    if (registered.definition.kind === TASK_KIND_ENUM.Task) {
-        console.log(
-            registered.name,
-            await registered.definition.fn({
-                id: registered.id,
-                name: registered.name,
-            })
-        );
-    }
-}
+const route = branch("route", {
+    branches: ["us", "eu"], // the only names routing may follow
+    choose: (ctx) => (ctx.name === "route" ? "us" : "eu"),
+});
+
+const us = task("us", { fn: () => "us: priced" });
+const eu = task("eu", { fn: () => "eu: priced" });
+
+const settle = delay("settle", { durationMs: 300_000 });
+
+const gate = shortCircuit("gate", {
+    condition: async () => (await hasRows()) === false,
+});
+
+const report = task("report", { fn: () => "report: sent" });
+
+const startChild = trigger("start-child", {
+    dagName: "publish",
+    waitForCompletion: true,
+});
+
+const dag = createDAG("pricing")
+    .chain(sourceReady, extract)
+    .chain(extract, route)
+    .chain(route, [us, eu]) // a branch can route to every declared name
+    .chain([us, eu], settle)
+    .chain(settle, gate)
+    .chain(gate, report)
+    .chain(report, startChild);
 ```
 
-`A` runs first and `F` last; every other task waits for its upstream tasks. The array from `topologicalSort()` for this graph is `["A", "D", "B", "E", "C", "G", "F"]`.
+`topologicalSort()` returns `["source-ready", "extract", "route", "us", "eu", "settle", "gate", "report", "start-child"]`. Each registration keeps its kind, so a scheduler can tell a poll from a wait from a hand-off:
+
+```ts
+for (const registered of dag.topologicalSort()) {
+    console.log(registered.name, registered.definition.kind);
+}
+
+// source-ready  sensor
+// extract       task
+// route         branch
+// us            task
+// eu            task
+// settle        delay
+// gate          short_circuit
+// report        task
+// start-child   trigger
+```
+
+The SDK stores the graph and runs nothing; [Running tasks](#running-tasks) shows a scheduler dispatching on those kinds. Declaration details per factory are in [Task kinds](#task-kinds).
 
 ## Declaring tasks
 
@@ -162,6 +191,7 @@ if (reportTask?.definition.kind === TASK_KIND_ENUM.Task) {
     await reportTask.definition.fn({
         id: reportTask.id,
         name: reportTask.definition.name,
+        payload: undefined,
     }); // "<task-id>:REPORT"
 }
 ```
@@ -472,7 +502,11 @@ const retryPath = branch("retry-path", {
     choose: () => "retry" as const,
 });
 
-await retryPath.choose({ id: "retry-path-id", name: "retry-path" }); // "retry"
+await retryPath.choose({
+    id: "retry-path-id",
+    name: "retry-path",
+    payload: undefined,
+}); // "retry"
 ```
 
 or several branches:
@@ -483,7 +517,11 @@ const byRegion = branch("by-region", {
         ctx.name === "by-region" ? (["us", "eu"] as const) : "us",
 });
 
-await byRegion.choose({ id: "by-region-id", name: "by-region" }); // ["us", "eu"]
+await byRegion.choose({
+    id: "by-region-id",
+    name: "by-region",
+    payload: undefined,
+}); // ["us", "eu"]
 ```
 
 Declare `branches` as well to make the names a wiring contract:
@@ -500,7 +538,7 @@ const dag = createDAG("regions").chain(route, [
 ]);
 ```
 
-With `branches` declared, the wiring step directly after the branch task must name exactly those branches: routing to an undeclared task, or declaring a branch the step does not route to, is rejected at compile time and at runtime. A branch without `branches` stays unchecked, and only the branch's own downstream step is constrained — what those tasks require next is not.
+With `branches` declared, the wiring step that routes the branch must name exactly those branches, in one step: routing to an undeclared task, or declaring a branch that step does not route to, is rejected at compile time and at runtime. That step need not come directly after the branch task — registering the branch alone and wiring it later is fine, and the branch simply reports itself unrouted until then. A branch without `branches` stays unchecked, and only the branch's own downstream step is constrained — what those tasks require next is not.
 
 A scheduler uses the returned name(s) to decide which downstream tasks to run.
 
@@ -511,7 +549,11 @@ const skipIfEmpty = shortCircuit("skip-if-empty", {
     condition: async () => (await countRows()) === 0,
 });
 
-await skipIfEmpty.condition({ id: "skip-id", name: "skip-if-empty" }); // true or false
+await skipIfEmpty.condition({
+    id: "skip-id",
+    name: "skip-if-empty",
+    payload: undefined,
+}); // true or false
 ```
 
 When the condition tells the scheduler to stop, downstream tasks can be skipped without running them.
@@ -784,7 +826,7 @@ The SDK only describes the graph; your scheduler decides how tasks execute. Beca
 import { TASK_KIND_ENUM, type DAGTask } from "@badag/sdk";
 
 async function runTask(task: DAGTask): Promise<void> {
-    const ctx = { id: task.id, name: task.name };
+    const ctx = { id: task.id, name: task.name, payload: undefined };
     const { definition } = task;
 
     switch (definition.kind) {

@@ -4,13 +4,13 @@ import * as v from "valibot";
 import { describe, expect, expectTypeOf, it } from "vitest";
 import { z } from "zod";
 
-import { branch } from "./branch";
-import { delay } from "./delay";
-import { sensor } from "./sensor";
-import { shortCircuit } from "./short-circuit";
-import { task } from "./task";
-import { trigger } from "./trigger";
-import type { AnySchema } from "./types";
+import { branch } from "./factories/branch";
+import { delay } from "./factories/delay";
+import { sensor } from "./factories/sensor";
+import { shortCircuit } from "./factories/short-circuit";
+import { task } from "./factories/task";
+import { trigger } from "./factories/trigger";
+import type { AnySchema } from "./types/base";
 
 /**
  * The value a schema is asked to validate, taken from the Standard Schema

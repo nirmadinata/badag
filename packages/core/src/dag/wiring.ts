@@ -10,8 +10,8 @@
  * operators are readable at runtime only and every graph check stays in the DAG.
  */
 
-import { DAGTask } from "./dag-task";
-import type { TaskLike } from "./dag-task";
+import { DAGTask } from "./registered-task";
+import type { TaskLike } from "./registered-task";
 
 /** One operand of a wiring expression: a task, or a flat wiring set of tasks. */
 export type WiringOperand = TaskLike | readonly TaskLike[];

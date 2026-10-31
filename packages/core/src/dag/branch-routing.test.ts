@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { branch } from "../task/branch";
-import { task as createTask } from "../task/task";
+import { branch } from "../task/factories/branch";
+import { task as createTask } from "../task/factories/task";
 import { createDAG } from "./dag";
 import type { DAG } from "./dag";
-import { crossDownstream } from "./dag-task";
-import type { DAGTask, TaskDefinition } from "./dag-task";
+import { crossDownstream } from "./registered-task";
+import type { DAGTask, TaskDefinition } from "./registered-task";
 
 // These helpers erase literal names, so the checks under test are the runtime
 // ones; the static channel is covered in public-api.test.ts.

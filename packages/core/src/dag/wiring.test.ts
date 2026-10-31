@@ -1,16 +1,16 @@
 import { describe, expect, it } from "vitest";
 
-import { branch } from "../task/branch";
-import { delay } from "../task/delay";
+import { branch } from "../task/factories/branch";
+import { delay } from "../task/factories/delay";
+import { sensor } from "../task/factories/sensor";
+import { shortCircuit } from "../task/factories/short-circuit";
+import { task as createTask } from "../task/factories/task";
+import { trigger } from "../task/factories/trigger";
 import { TASK_KIND_ENUM } from "../task/kind";
-import { sensor } from "../task/sensor";
-import { shortCircuit } from "../task/short-circuit";
-import { task as createTask } from "../task/task";
-import { trigger } from "../task/trigger";
-import { TRIGGER_RULE_ENUM } from "../trigger-rule";
+import { TRIGGER_RULE_ENUM } from "../task/trigger-rule";
 import { createDAG } from "./dag";
 import type { DAG } from "./dag";
-import type { DAGTask, TaskLike } from "./dag-task";
+import type { DAGTask, TaskLike } from "./registered-task";
 import { parseWiringExpression } from "./wiring";
 import type { WiringOperand } from "./wiring";
 

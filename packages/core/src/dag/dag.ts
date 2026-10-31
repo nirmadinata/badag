@@ -1,20 +1,25 @@
 import { hashTaskId } from "../hash/hash";
-import { taskBehaviorCallback, taskBehaviorSource } from "../task/identity";
-import { TASK_KIND_ENUM } from "../task/kind";
-import type { TaskKind } from "../task/kind";
-import { assertBranchWiring } from "./branch-wiring";
-import type {
-    ChainProblem,
-    NextBranches,
-    NextEdges,
-    NextSignatures,
-    ParseProblem,
-} from "./chain";
-import { DAGTask, isDefinition, normalizeTasks, stateOf } from "./dag-task";
-import type { TaskDefinition, TaskLike, TaskOrTasks } from "./dag-task";
-import type { DAGJson, TaskJson, TaskJsonBase } from "./types";
-import { findViolations } from "./validation";
-import type { DAGViolation } from "./validation";
+import {
+    taskBehaviorCallback,
+    taskBehaviorSource,
+} from "../task/definition/identity";
+import { findViolations } from "./audit/audit";
+import type { DAGViolation } from "./audit/violation";
+import { assertBranchWiring } from "./branch-routing";
+import type { NextBranches } from "./chain/branches";
+import type { NextEdges } from "./chain/edges";
+import type { ChainProblem, ParseProblem } from "./chain/problem";
+import type { NextSignatures } from "./chain/signatures";
+import {
+    DAGTask,
+    isDefinition,
+    normalizeTasks,
+    stateOf,
+} from "./registered-task";
+import type { TaskDefinition, TaskLike, TaskOrTasks } from "./registered-task";
+import { serializeDAG } from "./serialization";
+import type { DAGJson } from "./serialization";
+import { sortTopologically } from "./topological-sort";
 import { parseWiringExpression } from "./wiring";
 import type { WiringOperand } from "./wiring";
 
@@ -24,35 +29,6 @@ type TaskIdIndex = string;
 
 /** One validated edge step: every task on the left upstream of every task on the right. */
 type EdgeStep = readonly [readonly DAGTask[], readonly DAGTask[]];
-
-/** Common serialized fields, omitting absent optional metadata. */
-function taskJsonBase(task: DAGTask): Omit<TaskJsonBase<TaskKind>, "kind"> {
-    const base = {
-        id: task.id,
-        name: task.name,
-        triggerRule: task.triggerRule,
-        upstream: [...task.upstream].map((upstream) => upstream.name),
-        downstream: [...task.downstream].map((downstream) => downstream.name),
-    };
-
-    if (task.description === undefined && task.config === undefined) {
-        return base;
-    }
-
-    if (task.description === undefined) {
-        return { ...base, config: task.config };
-    }
-
-    if (task.config === undefined) {
-        return { ...base, description: task.description };
-    }
-
-    return {
-        ...base,
-        description: task.description,
-        config: task.config,
-    };
-}
 
 /**
  * An Airflow-inspired directed acyclic graph.
@@ -316,61 +292,7 @@ export class DAG<
      * Throws if the graph is cyclic.
      */
     topologicalSort(): DAGTask[] {
-        const remainingDeps = new Map<DAGTask, number>();
-        const ready: DAGTask[] = [];
-
-        for (const task of this.#tasks.values()) {
-            remainingDeps.set(task, task.upstream.size);
-
-            if (task.upstream.size === 0) {
-                ready.push(task);
-            }
-        }
-
-        const order: DAGTask[] = [];
-        let index = 0;
-
-        while (index < ready.length) {
-            const task = ready[index];
-            index += 1;
-
-            order.push(task);
-            this.#releaseDownstream(task, remainingDeps, ready);
-        }
-
-        if (order.length !== this.#tasks.size) {
-            throw new Error(`DAG "${this.#name}" contains a cycle`);
-        }
-
-        return order;
-    }
-
-    /**
-     * Decrement the dependency count of every downstream task, queueing the
-     * ones that become unblocked.
-     */
-    #releaseDownstream(
-        task: DAGTask,
-        remainingDeps: Map<DAGTask, number>,
-        ready: DAGTask[]
-    ): void {
-        for (const downstream of task.downstream) {
-            const remaining = remainingDeps.get(downstream);
-
-            if (remaining === undefined) {
-                throw new Error(
-                    `Task "${downstream.name}" is not registered in DAG "${this.#name}"`
-                );
-            }
-
-            const nextRemaining = remaining - 1;
-
-            remainingDeps.set(downstream, nextRemaining);
-
-            if (nextRemaining === 0) {
-                ready.push(downstream);
-            }
-        }
+        return sortTopologically(this.#tasks, this.#name);
     }
 
     /**
@@ -382,60 +304,7 @@ export class DAG<
      * `config` values must be JSON-serializable for that conversion.
      */
     toJSON(): DAGJson {
-        return {
-            name: this.#name,
-            tasks: [...this.#tasks.values()].map((task) =>
-                this.#taskJson(task)
-            ),
-        };
-    }
-
-    /** Snapshot one task, omitting functions and absent optional fields. */
-    #taskJson(task: DAGTask): TaskJson {
-        const base = taskJsonBase(task);
-        const { definition } = task;
-
-        switch (definition.kind) {
-            case TASK_KIND_ENUM.Sensor: {
-                const sensor = {
-                    ...base,
-                    kind: TASK_KIND_ENUM.Sensor,
-                };
-
-                return definition.pokeIntervalMs === undefined
-                    ? sensor
-                    : { ...sensor, pokeIntervalMs: definition.pokeIntervalMs };
-            }
-
-            case TASK_KIND_ENUM.Delay: {
-                return {
-                    ...base,
-                    kind: TASK_KIND_ENUM.Delay,
-                    durationMs: definition.durationMs,
-                };
-            }
-
-            case TASK_KIND_ENUM.Branch: {
-                return { ...base, kind: TASK_KIND_ENUM.Branch };
-            }
-
-            case TASK_KIND_ENUM.ShortCircuit: {
-                return { ...base, kind: TASK_KIND_ENUM.ShortCircuit };
-            }
-
-            case TASK_KIND_ENUM.Trigger: {
-                return {
-                    ...base,
-                    kind: TASK_KIND_ENUM.Trigger,
-                    dagName: definition.dagName,
-                    waitForCompletion: definition.waitForCompletion,
-                };
-            }
-
-            default: {
-                return { ...base, kind: TASK_KIND_ENUM.Task };
-            }
-        }
+        return serializeDAG(this.#name, [...this.#tasks.values()]);
     }
 
     #assertHandleBelongs(task: TaskLike): void {

@@ -1,14 +1,12 @@
-import { TASK_KIND_ENUM } from "./kind";
-import { taskMetadata } from "./metadata";
-import { taskSchemas } from "./schemas";
-import { normalizeTaskName } from "./task-name";
+import { taskMetadata } from "../definition/metadata";
+import { taskSchemas } from "../definition/schemas";
+import { normalizeTaskName } from "../definition/task-name";
+import { TASK_KIND_ENUM } from "../kind";
+import type { AnySchema, SchemaOf, TrimTaskName } from "../types/base";
 import type {
-    AnySchema,
-    SchemaOf,
     ShortCircuitTaskDefinition,
     ShortCircuitTaskInput,
-    TrimTaskName,
-} from "./types";
+} from "../types/short-circuit";
 
 /**
  * Build a short-circuit task definition.

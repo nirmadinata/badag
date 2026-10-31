@@ -1,14 +1,10 @@
-import { TASK_KIND_ENUM } from "./kind";
-import { taskMetadata } from "./metadata";
-import { taskSchemas } from "./schemas";
-import { normalizeTaskName } from "./task-name";
-import type {
-    AnySchema,
-    DelayTaskDefinition,
-    DelayTaskInput,
-    TrimTaskName,
-} from "./types";
-import { assertNonNegativeDuration } from "./validation";
+import { assertNonNegativeDuration } from "../definition/duration";
+import { taskMetadata } from "../definition/metadata";
+import { taskSchemas } from "../definition/schemas";
+import { normalizeTaskName } from "../definition/task-name";
+import { TASK_KIND_ENUM } from "../kind";
+import type { AnySchema, TrimTaskName } from "../types/base";
+import type { DelayTaskDefinition, DelayTaskInput } from "../types/delay";
 
 /**
  * Build a delay task definition.

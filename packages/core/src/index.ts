@@ -1,10 +1,10 @@
 export { createDAG, DAG } from "./dag/dag";
 
-export { crossDownstream } from "./dag/dag-task";
+export { crossDownstream } from "./dag/registered-task";
 
-export { DAG_VIOLATION_ENUM } from "./dag/validation";
+export { DAG_VIOLATION_ENUM } from "./dag/audit/violation";
 
-export type { DAGViolation, DAGViolationCode } from "./dag/validation";
+export type { DAGViolation, DAGViolationCode } from "./dag/audit/violation";
 
 export type { WiringOperand } from "./dag/wiring";
 
@@ -18,7 +18,7 @@ export {
     trigger,
 } from "./task";
 
-export type { DAGTask, TaskLike, TaskOrTasks } from "./dag/dag-task";
+export type { DAGTask, TaskLike, TaskOrTasks } from "./dag/registered-task";
 
 export type {
     BranchTaskJson,
@@ -30,7 +30,7 @@ export type {
     TaskJsonBase,
     TaskJsonTask,
     TriggerTaskJson,
-} from "./dag/types";
+} from "./dag/serialization";
 
 export type {
     AnyBranchTaskDefinition,
@@ -78,6 +78,6 @@ export type {
     TriggerTaskInput,
 } from "./task";
 
-export { TRIGGER_RULE_ENUM } from "./trigger-rule";
+export { TRIGGER_RULE_ENUM } from "./task/trigger-rule";
 
-export type { TriggerRule } from "./trigger-rule";
+export type { TriggerRule } from "./task/trigger-rule";

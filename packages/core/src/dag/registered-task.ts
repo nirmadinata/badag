@@ -1,14 +1,14 @@
 import { hashTaskId } from "../hash/hash";
-import { taskBehaviorSource } from "../task/identity";
-import { assertTaskName } from "../task/task-name";
+import { taskBehaviorSource } from "../task/definition/identity";
+import { assertTaskName } from "../task/definition/task-name";
+import type { TaskKind } from "../task/kind";
+import type { TriggerRule } from "../task/trigger-rule";
+import { DEFAULT_TRIGGER_RULE } from "../task/trigger-rule";
+import type { TaskConfig } from "../task/types/base";
 import type {
     AnyTaskDefinition,
     RegisteredTaskDefinition,
-    TaskConfig,
-    TaskKind,
-} from "../task/types";
-import type { TriggerRule } from "../trigger-rule";
-import { DEFAULT_TRIGGER_RULE } from "../trigger-rule";
+} from "../task/types/definitions";
 import type { DAG } from "./dag";
 
 /** Structural definition shape accepted by DAG registration. */

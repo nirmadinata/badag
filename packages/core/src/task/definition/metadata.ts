@@ -1,6 +1,6 @@
 import type { TriggerRule } from "../trigger-rule";
 import { DEFAULT_TRIGGER_RULE } from "../trigger-rule";
-import type { TaskMetadata } from "./types";
+import type { TaskMetadata } from "../types/base";
 
 /**
  * Normalize the metadata shared by every task factory.

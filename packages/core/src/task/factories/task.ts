@@ -1,13 +1,9 @@
-import { TASK_KIND_ENUM } from "./kind";
-import { taskMetadata } from "./metadata";
-import { taskSchemas } from "./schemas";
-import { normalizeTaskName } from "./task-name";
-import type {
-    AnySchema,
-    AnyTaskFn,
-    CreateTask,
-    TaskParamOutput,
-} from "./types";
+import { taskMetadata } from "../definition/metadata";
+import { taskSchemas } from "../definition/schemas";
+import { normalizeTaskName } from "../definition/task-name";
+import { TASK_KIND_ENUM } from "../kind";
+import type { AnySchema, AnyTaskFn } from "../types/base";
+import type { CreateTask, TaskParamOutput } from "../types/task";
 
 /**
  * Build a regular task definition outside any DAG.

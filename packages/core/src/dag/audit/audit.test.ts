@@ -1,17 +1,18 @@
 import { describe, expect, it } from "vitest";
 
-import { branch } from "../task/branch";
-import { delay } from "../task/delay";
-import { sensor } from "../task/sensor";
-import { shortCircuit } from "../task/short-circuit";
-import { task as createTask } from "../task/task";
-import { trigger } from "../task/trigger";
-import { createDAG } from "./dag";
-import type { DAG } from "./dag";
-import { stateOf } from "./dag-task";
-import type { DAGTask, TaskDefinition } from "./dag-task";
-import { DAG_VIOLATION_ENUM, findViolations } from "./validation";
-import type { DAGViolation, DAGViolationCode } from "./validation";
+import { branch } from "../../task/factories/branch";
+import { delay } from "../../task/factories/delay";
+import { sensor } from "../../task/factories/sensor";
+import { shortCircuit } from "../../task/factories/short-circuit";
+import { task as createTask } from "../../task/factories/task";
+import { trigger } from "../../task/factories/trigger";
+import { createDAG } from "../dag";
+import type { DAG } from "../dag";
+import { stateOf } from "../registered-task";
+import type { DAGTask, TaskDefinition } from "../registered-task";
+import { findViolations } from "./audit";
+import { DAG_VIOLATION_ENUM } from "./violation";
+import type { DAGViolation, DAGViolationCode } from "./violation";
 
 // These helpers erase literal names, so the checks under test are the runtime
 // ones; the static channel is covered in public-api.test.ts.

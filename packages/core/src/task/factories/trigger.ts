@@ -1,13 +1,9 @@
-import { TASK_KIND_ENUM } from "./kind";
-import { taskMetadata } from "./metadata";
-import { taskSchemas } from "./schemas";
-import { normalizeTaskName } from "./task-name";
-import type {
-    AnySchema,
-    TriggerTaskDefinition,
-    TriggerTaskInput,
-    TrimTaskName,
-} from "./types";
+import { taskMetadata } from "../definition/metadata";
+import { taskSchemas } from "../definition/schemas";
+import { normalizeTaskName } from "../definition/task-name";
+import { TASK_KIND_ENUM } from "../kind";
+import type { AnySchema, TrimTaskName } from "../types/base";
+import type { TriggerTaskDefinition, TriggerTaskInput } from "../types/trigger";
 
 /**
  * Build a trigger task definition.

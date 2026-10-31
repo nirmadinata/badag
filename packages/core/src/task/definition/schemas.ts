@@ -1,4 +1,4 @@
-import type { AnySchema, TaskSchemas } from "./types";
+import type { AnySchema, TaskSchemas } from "../types/base";
 
 /**
  * Normalize the schemas declared by a task factory.

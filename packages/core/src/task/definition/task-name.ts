@@ -1,4 +1,4 @@
-import type { TrimTaskName } from "./types";
+import type { TrimTaskName } from "../types/base";
 
 /** Task names are alphanumeric words joined by single dashes or underscores. */
 const TASK_NAME_PATTERN = /^[\p{L}\p{N}]+(?:[-_][\p{L}\p{N}]+)*$/u;

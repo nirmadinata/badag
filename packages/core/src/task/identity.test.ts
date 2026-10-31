@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { branch } from "./branch";
-import { delay } from "./delay";
-import { taskBehaviorSource } from "./identity";
-import { sensor } from "./sensor";
-import { shortCircuit } from "./short-circuit";
-import { task } from "./task";
-import { trigger } from "./trigger";
+import { taskBehaviorSource } from "./definition/identity";
+import { branch } from "./factories/branch";
+import { delay } from "./factories/delay";
+import { sensor } from "./factories/sensor";
+import { shortCircuit } from "./factories/short-circuit";
+import { task } from "./factories/task";
+import { trigger } from "./factories/trigger";
 
 const makeTaskFn = (value: string) => () => value;
 

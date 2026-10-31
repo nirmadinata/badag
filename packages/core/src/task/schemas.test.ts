@@ -3,20 +3,18 @@ import * as v from "valibot";
 import { describe, expect, expectTypeOf, it } from "vitest";
 
 import { createDAG } from "../dag/dag";
-import { branch } from "./branch";
-import { delay } from "./delay";
-import { taskBehaviorSource } from "./identity";
-import { sensor } from "./sensor";
-import { shortCircuit } from "./short-circuit";
-import { task } from "./task";
-import { trigger } from "./trigger";
-import type {
-    DelayTaskDefinition,
-    SensorTaskDefinition,
-    ShortCircuitTaskDefinition,
-    TaskProducedOf,
-    TriggerTaskDefinition,
-} from "./types";
+import { taskBehaviorSource } from "./definition/identity";
+import { branch } from "./factories/branch";
+import { delay } from "./factories/delay";
+import { sensor } from "./factories/sensor";
+import { shortCircuit } from "./factories/short-circuit";
+import { task } from "./factories/task";
+import { trigger } from "./factories/trigger";
+import type { TaskProducedOf } from "./types/base";
+import type { DelayTaskDefinition } from "./types/delay";
+import type { SensorTaskDefinition } from "./types/sensor";
+import type { ShortCircuitTaskDefinition } from "./types/short-circuit";
+import type { TriggerTaskDefinition } from "./types/trigger";
 
 const warehouseInput = v.object({
     warehouseId: v.string(),

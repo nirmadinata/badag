@@ -1,23 +1,6 @@
-import { TASK_KIND_ENUM } from "../task/kind";
-import type { DAGTask } from "./dag-task";
-
-/**
- * The declared branch names of a branch task.
- *
- * `undefined` for every other kind, and for a branch that declares no
- * `branches` set — an undeclared branch set means the wiring is unchecked.
- */
-export function declaredBranches(task: DAGTask): readonly string[] | undefined {
-    const { definition } = task;
-
-    return definition.kind === TASK_KIND_ENUM.Branch
-        ? definition.branches
-        : undefined;
-}
-
-export function quoteNames(names: readonly string[]): string {
-    return names.map((name) => `"${name}"`).join(", ");
-}
+import { declaredBranches } from "./declared-branches";
+import { quoteNames } from "./format";
+import type { DAGTask } from "./registered-task";
 
 /**
  * Assert that one wiring step matches every declared branch set on its

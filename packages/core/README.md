@@ -6,6 +6,16 @@ An Airflow-inspired DAG builder for TypeScript. Declare tasks, wire dependencies
 - Every edge inserted through the public methods is validated, so a `DAG` cannot become cyclic or cross DAG boundaries.
 - Task names stay literal types; graph links are `ReadonlySet`, so they cannot be mutated by accident.
 
+## Source layout
+
+| Path | Responsibility |
+| --- | --- |
+| `src/dag/` | The `DAG` aggregate, registered task handles, chain-time type checks, wiring, graph audit, and serialization |
+| `src/task/` | Task kinds and their public types, one factory per kind, and the definition helpers shared by those factories |
+| `src/hash/` | Task identity hashing |
+
+Within `dag/`, `chain/` holds only compile-time bookkeeping, `audit/` holds the read-only violation rules, and runtime modules sit at the folder root. Within `task/`, `types/` has one module per kind plus the shared base, `factories/` holds the six public factories, and `definition/` holds naming, metadata, schema, identity, and duration helpers.
+
 ## Import
 
 Workspace consumers import the TypeScript source directly:

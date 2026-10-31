@@ -1,15 +1,10 @@
-import { TASK_KIND_ENUM } from "./kind";
-import { taskMetadata } from "./metadata";
-import { taskSchemas } from "./schemas";
-import { normalizeTaskName } from "./task-name";
-import type {
-    AnySchema,
-    SchemaOf,
-    SensorTaskDefinition,
-    SensorTaskInput,
-    TrimTaskName,
-} from "./types";
-import { assertPositiveDuration } from "./validation";
+import { assertPositiveDuration } from "../definition/duration";
+import { taskMetadata } from "../definition/metadata";
+import { taskSchemas } from "../definition/schemas";
+import { normalizeTaskName } from "../definition/task-name";
+import { TASK_KIND_ENUM } from "../kind";
+import type { AnySchema, SchemaOf, TrimTaskName } from "../types/base";
+import type { SensorTaskDefinition, SensorTaskInput } from "../types/sensor";
 
 /**
  * Build a sensor task definition.

@@ -1,5 +1,5 @@
-import { TASK_KIND_ENUM } from "./kind";
-import type { AnyTaskDefinition } from "./types";
+import { TASK_KIND_ENUM } from "../kind";
+import type { AnyTaskDefinition } from "../types/definitions";
 
 /**
  * The behavior callback of a callable kind, or `undefined` for a declarative

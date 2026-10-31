@@ -1,37 +1,20 @@
-export { createDAG, DAG } from "./core/dag/dag";
-
-export { crossDownstream } from "./core/dag/dag-task";
-
-export { DAG_VIOLATION_ENUM } from "./core/dag/validation";
-
-export type { DAGViolation, DAGViolationCode } from "./core/dag/validation";
-
-export type { WiringOperand } from "./core/dag/wiring";
-
 export {
     branch,
+    createDAG,
     delay,
     sensor,
     shortCircuit,
     task,
     TASK_KIND_ENUM,
     trigger,
-} from "./core/task";
+} from "@badag/core";
 
-export type { DAGTask, TaskLike, TaskOrTasks } from "./core/dag/dag-task";
-
-export type {
-    BranchTaskJson,
-    DAGJson,
-    DelayTaskJson,
-    SensorTaskJson,
-    ShortCircuitTaskJson,
-    TaskJson,
-    TaskJsonBase,
-    TaskJsonTask,
-    TriggerTaskJson,
-} from "./core/dag/types";
-
+/**
+ * Task authoring types.
+ *
+ * Definitions, schemas, context, and metadata types are re-exported so
+ * consumers do not need a direct core dependency.
+ */
 export type {
     AnyBranchTaskDefinition,
     AnyDelayTaskDefinition,
@@ -74,10 +57,7 @@ export type {
     TaskProducedOf,
     TaskSchema,
     TaskSchemas,
+    TriggerRule,
     TriggerTaskDefinition,
     TriggerTaskInput,
-} from "./core/task";
-
-export { TRIGGER_RULE_ENUM } from "./core/trigger-rule";
-
-export type { TriggerRule } from "./core/trigger-rule";
+} from "@badag/core";

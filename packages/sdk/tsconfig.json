@@ -1,12 +1,12 @@
 {
     "compilerOptions": {
         "target": "esnext",
-        "lib": ["es2023"],
+        "lib": ["es2023", "dom"],
         "moduleDetection": "force",
         "module": "preserve",
         "moduleResolution": "bundler",
         "resolveJsonModule": true,
-        "types": ["node"],
+        "types": [],
         "strict": true,
         "noUnusedLocals": true,
         "declaration": true,
@@ -15,9 +15,9 @@
         "isolatedModules": true,
         "verbatimModuleSyntax": true,
         "skipLibCheck": true,
-        "paths": {
-            "@/*": ["./src/*"]
-        }
+        // Core is imported from source, so both trees share one program.
+        "rootDir": ".."
     },
-    "include": ["src"]
+    "include": ["src", "../core/src"],
+    "exclude": ["../core/src/**/*.test.ts"]
 }

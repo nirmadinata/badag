@@ -28,17 +28,14 @@
         "release": "bumpp",
         "prepublishOnly": "pnpm run build"
     },
-    "dependencies": {
-        "@standard-schema/spec": "^1.1.0"
-    },
     "devDependencies": {
-        "@types/node": "^26.6.5",
-        "arktype": "^2.2.9",
+        "@badag/core": "workspace:*",
         "bumpp": "^12.3.0",
         "tsdown": "^0.23.1",
         "typescript": "7.1.0-beta",
-        "valibot": "^1.5.0",
-        "vitest": "^5.0.5",
-        "zod": "^4.6.7"
+        "vitest": "^5.0.5"
+    },
+    "inlinedDependencies": {
+        "@standard-schema/spec": "1.1.0"
     }
 }

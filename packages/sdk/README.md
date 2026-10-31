@@ -246,49 +246,56 @@ const etl = createDAG("etl").chain(nightly);
 const audit = createDAG("audit").chain(nightly);
 ```
 
-#### Callback identity ignores captured values
+#### Callback identity cannot see captured values
 
-Source text records what a callback is written as, not what it closes over. A factory that captures a value produces the same source text for every value, so two tasks with the same name and that factory's shape are the same task — the second definition is silently dropped, not rejected:
+Source text records what a callback is written as, not what it closes over. A factory that captures a value produces the same source text for every value, so two tasks with that factory's shape and the same name share a task ID. The SDK can only treat them as a duplicate definition when they are the same callback instance:
 
 ```ts
 import { createDAG, task } from "@badag/sdk";
 
 const syncTable = (table: string) => () => `syncing ${table}`;
+const syncCustomers = syncTable("customers");
 
 const dag = createDAG("warehouse")
-    .chain(task("sync", { fn: syncTable("customers") }))
-    .chain(task("sync", { fn: syncTable("orders") }));
+    .chain(task("sync", { fn: syncCustomers }))
+    .chain(task("sync", { fn: syncCustomers }));
 
-dag.tasks.size; // 1 — the "orders" definition was treated as a duplicate
-// The registered task runs "syncing customers", not "syncing orders".
+dag.tasks.size; // 1 — the same callback instance is a duplicate definition
 ```
 
-Both `syncTable("customers")` and `syncTable("orders")` stringify to `() => \`syncing ${table}\``, so they share a task ID and the first registration wins. This is silent: no error, no warning, and `dag.tasks.size` is the only visible signal.
-
-Two explicit workarounds:
+A different callback instance with the same source is rejected instead of silently dropped, because the SDK cannot tell whether the captured values differ:
 
 ```ts
 import { createDAG, task } from "@badag/sdk";
 
 const syncTable = (table: string) => () => `syncing ${table}`;
 
-// 1. Put the captured value in the name, so the names differ.
+const dag = createDAG("warehouse").chain(
+    task("sync", { fn: syncTable("customers") })
+);
+
+dag.chain(task("sync", { fn: syncTable("orders") }));
+// throws: Task "sync" ... has the same callback source as an existing
+// definition but a different callback instance ...
+```
+
+Bound functions fail the same way: every `bind()` result stringifies to `function () { [native code] }`, so two same-name bound tasks share a task ID and are rejected as different callback instances.
+
+A task name is unique inside a DAG, so a same-name pair can never produce two tasks. To declare both, put the captured value in the name:
+
+```ts
+import { createDAG, task } from "@badag/sdk";
+
+const syncTable = (table: string) => () => `syncing ${table}`;
+
 const dag = createDAG("warehouse")
     .chain(task("sync-customers", { fn: syncTable("customers") }))
     .chain(task("sync-orders", { fn: syncTable("orders") }));
 
 dag.tasks.size; // 2 — distinct names, distinct tasks
-
-// 2. Write the value into the callback text, so the behavior sources differ.
-const other = createDAG("warehouse-two")
-    .chain(task("sync", { fn: () => "syncing customers" }))
-    .chain(task("sync", { fn: () => "syncing orders" }));
-// throws: Task "sync" already exists in DAG "warehouse-two"
 ```
 
-Workaround 1 yields two tasks. Workaround 2 makes the IDs differ but leaves the names identical, so the second registration is rejected as a task name collision — an error instead of a silent drop, but still not two tasks in one DAG. Combining both is the usual fix: distinct names _and_ distinct behavior inline.
-
-The same blindness applies to bound functions, which all stringify to `function () { [native code] }`, and to any callback whose distinguishing input is captured rather than written inline. See [ADR 0003](../../docs/adr/0003-callback-identity-uses-source-text.md) for why identity is source-based and what would have to change to detect this.
+Reuse the same callback instance when the definitions are intentionally the same task; use distinct names when the captured values must both run. See [ADR 0008](../../docs/adr/0008-duplicate-callbacks-must-be-the-same-function.md) for why a matching source is rejected rather than deduplicated.
 
 ## Task kinds
 

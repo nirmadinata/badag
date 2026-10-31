@@ -10,7 +10,7 @@ A TypeScript SDK for declaring task graphs, wiring dependencies, and finding tas
 
 **Task metadata**: The optional, non-behavioral part of a task definition — description, config, trigger rule, and kind-specific timing such as a polling interval. Metadata never affects task identity. _Avoid_: options, settings, attributes
 
-**Behavior source**: The declared behavior of a task definition: its callback for callback kinds, its declared fields for declarative kinds. Two definitions with the same name and behavior source are the same task, whatever their metadata. _Avoid_: behavior, body, implementation
+**Behavior source**: The declared behavior of a task definition: its callback for callback kinds, its declared fields for declarative kinds. Source text does not include captured values, so two definitions with the same name and behavior source share a task ID; for callback kinds they are the same task only when they also share the callback function. _Avoid_: behavior, body, implementation
 
 **Payload**: The value a task receives, delivered in `ctx.payload` and typed by its input schema. Without an input schema the payload is `undefined`. _Avoid_: argument, params, data
 
@@ -44,7 +44,7 @@ A TypeScript SDK for declaring task graphs, wiring dependencies, and finding tas
 
 **Task name**: The unique human-readable name of a task within one DAG; uniqueness is scoped to that DAG. _Avoid_: label, slug, key
 
-**Task ID**: An identifier derived from a task definition's name and behavior source; metadata does not affect it, and the same name and behavior produce the same task ID in every DAG within one build. _Avoid_: content hash, content id, UUID
+**Task ID**: An identifier derived from a task definition's name and behavior source; metadata does not affect it, and the same name and behavior produce the same task ID in every DAG within one build. A shared task ID does not prove equal callback behavior: captured values are invisible to the behavior source. _Avoid_: content hash, content id, UUID
 
 **Dependency edge**: A directed requirement that an upstream task finish before a downstream task becomes ready. Cycles are invalid. _Avoid_: link, connection
 
@@ -68,7 +68,7 @@ A TypeScript SDK for declaring task graphs, wiring dependencies, and finding tas
 
 **Trigger rule**: A declared condition under which a scheduler may run a task, expressed in terms of upstream outcomes; the DAG stores it but does not evaluate it. _Avoid_: readiness rule, run condition
 
-**Duplicate definition**: A task definition whose task ID and name match a task already registered in the same DAG. Registering it reuses the existing registered task: the first registration's metadata is kept and the duplicate's metadata is discarded. _Avoid_: duplicate task, repeated task
+**Duplicate definition**: A task definition whose task ID and name match a task already registered in the same DAG and, for callback kinds, whose callback is the same function. Registering it reuses the existing registered task: the first registration's metadata is kept and the duplicate's metadata is discarded. A matching task ID with a different callback instance is rejected, because registration cannot prove the captured values match. _Avoid_: duplicate task, repeated task
 
 **Task name collision**: A task definition whose name matches another task in the same DAG but whose task ID differs; registration is rejected. _Avoid_: duplicate name
 

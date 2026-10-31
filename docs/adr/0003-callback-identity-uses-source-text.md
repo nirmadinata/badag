@@ -2,7 +2,7 @@
 
 A callback task's behavior source is the callback's source text (`Function.prototype.toString()`), not a structural comparison of what it does. Two definitions with the same name and the same callback source share a task ID and are treated as a duplicate definition; two callbacks that differ only in captured values share source text and are therefore the same task, with the first registration's behavior installed. Source text was chosen because it is the only behavior signal that survives without executing the callback, comparing closures, or requiring the caller to declare an explicit identity key.
 
-**Status**: accepted, with a known blind spot to revisit — see _Revisit triggers_ below.
+**Status**: source-text identity remains accepted; duplicate registration is superseded by [ADR 0008](0008-duplicate-callbacks-must-be-the-same-function.md), which requires the same callback instance for callable kinds. The blind spot below is now a loud registration error.
 
 ## Example where this is a problem
 

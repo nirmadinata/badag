@@ -11,6 +11,7 @@ import { shortCircuit } from "./short-circuit";
 import { task } from "./task";
 import { trigger } from "./trigger";
 import type {
+    AnyTaskDefinition,
     BranchChoice,
     SchemaOf,
     DelayTaskDefinition,
@@ -29,6 +30,16 @@ const context = <Name extends string, Payload = undefined>(
     // the helper only threads it through unchanged.
     payload: payload as Payload,
 });
+
+// Callback identity is reference-based, so duplicate definitions must share it.
+const readyPredicate = () => true;
+
+const boundTarget = (value: string) => value;
+
+const makeCapturedTask = (value: string) =>
+    task("work", {
+        fn: () => value,
+    });
 
 describe("sensor tasks", () => {
     it("evaluates the predicate with a task context", async () => {
@@ -132,10 +143,16 @@ describe("sensor tasks", () => {
     it("reuses a same-name sensor whose interval differs, keeping the first", () => {
         const dag = createDAG("kinds")
             .chain(
-                sensor("ready", { predicate: () => true, pokeIntervalMs: 10 })
+                sensor("ready", {
+                    predicate: readyPredicate,
+                    pokeIntervalMs: 10,
+                })
             )
             .chain(
-                sensor("ready", { predicate: () => true, pokeIntervalMs: 20 })
+                sensor("ready", {
+                    predicate: readyPredicate,
+                    pokeIntervalMs: 20,
+                })
             );
 
         const registered = dag.getTask("ready");
@@ -518,9 +535,85 @@ describe("trigger tasks", () => {
     });
 });
 
+describe("callback identity", () => {
+    const callableCases: readonly (readonly [
+        string,
+        (value: string) => AnyTaskDefinition,
+    ])[] = [
+        ["task", makeCapturedTask],
+        [
+            "sensor",
+            (value) =>
+                sensor("work", {
+                    predicate: () => value === "first",
+                }),
+        ],
+        [
+            "branch",
+            (value) =>
+                branch("work", {
+                    choose: () => value,
+                }),
+        ],
+        [
+            "short-circuit",
+            (value) =>
+                shortCircuit("work", {
+                    condition: () => value === "first",
+                }),
+        ],
+    ];
+
+    it.each(callableCases)(
+        "rejects capture-only differences in a %s callback",
+        (_kind, build) => {
+            const dag = createDAG("capture").chain(build("first"));
+
+            expect(() => dag.chain(build("second"))).toThrow(
+                /different callback instance/u
+            );
+            expect(dag.tasks.size).toBe(1);
+        }
+    );
+
+    it("rejects capture-only differences within one batch", () => {
+        const dag = createDAG("batch");
+
+        expect(() =>
+            dag.chain([makeCapturedTask("first"), makeCapturedTask("second")])
+        ).toThrow(/different callback instance/u);
+        expect(dag.tasks.size).toBe(0);
+    });
+
+    it("rejects bound callbacks that share native source", () => {
+        const dag = createDAG("bound").chain(
+            task("sync", { fn: boundTarget.bind(null, "customers") })
+        );
+
+        expect(() =>
+            dag.chain(task("sync", { fn: boundTarget.bind(null, "orders") }))
+        ).toThrow(/different callback instance/u);
+        expect(dag.tasks.size).toBe(1);
+    });
+
+    it("still deduplicates declarative kinds with equal behavior sources", () => {
+        const dag = createDAG("declarative")
+            .chain(delay("wait", { durationMs: 10, description: "first" }))
+            .chain(delay("wait", { durationMs: 10, description: "second" }))
+            .chain(trigger("start", { dagName: "child", description: "first" }))
+            .chain(
+                trigger("start", { dagName: "child", description: "second" })
+            );
+
+        expect(dag.tasks.size).toBe(2);
+        expect(dag.getTask("wait")?.description).toBe("first");
+        expect(dag.getTask("start")?.description).toBe("first");
+    });
+});
+
 const kindDefinitions = () => [
     task("extract", { fn: () => 0 }),
-    sensor("ready", { predicate: () => true }),
+    sensor("ready", { predicate: readyPredicate }),
     delay("wait", { durationMs: 1 }),
     branch("route", { choose: () => "left" }),
     shortCircuit("gate", { condition: () => true }),
@@ -570,12 +663,11 @@ describe("shared metadata", () => {
 
         dag.chain(
             sensor("ready", {
-                predicate: () => true,
+                predicate: readyPredicate,
                 description: "changed",
                 triggerRule: TRIGGER_RULE_ENUM.AllDone,
             })
         );
-
         expect(dag.tasks.size).toBe(6);
         expect(dag.getTask("ready")?.description).toBeUndefined();
         expect(dag.getTask("ready")?.triggerRule).toBe(

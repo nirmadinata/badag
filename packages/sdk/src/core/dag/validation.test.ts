@@ -225,10 +225,9 @@ describe("validate: graphs built through the wiring API", () => {
 
     it("reports nothing after a rejected batch rolls back", () => {
         const dag = createDAG("rollback").chain(regular("a"), regular("b"));
+        const c = regular("c");
 
-        expect(() => dag.chain(regular("c"), regular("c"))).toThrow(
-            "A task cannot depend on itself"
-        );
+        expect(() => dag.chain(c, c)).toThrow("A task cannot depend on itself");
         expect(dag.validate()).toStrictEqual([]);
         expect(dag.tasks.size).toBe(2);
     });

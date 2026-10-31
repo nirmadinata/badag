@@ -15,6 +15,9 @@ import type { DAGTask, TaskLike } from "./dag-task";
 import { parseWiringExpression } from "./wiring";
 import type { WiringOperand } from "./wiring";
 
+// Callback identity is reference-based, so duplicate definitions must share it.
+const rawFn = (): string => "raw";
+
 function downstreamNames(dag: DAG): Record<string, string[]> {
     return Object.fromEntries(
         [...dag.tasks.values()].map((task) => [
@@ -735,12 +738,12 @@ describe("DAG.parse", () => {
 
     it("keeps a duplicate definition's metadata from the first registration", () => {
         const first = createTask("extract", {
-            fn: () => "raw",
+            fn: rawFn,
             description: "first",
         });
 
         const duplicate = createTask("extract", {
-            fn: () => "raw",
+            fn: rawFn,
             description: "second",
         });
 

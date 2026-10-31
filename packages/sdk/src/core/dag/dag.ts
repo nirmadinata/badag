@@ -1,5 +1,5 @@
 import { hashTaskId } from "@/core/hash/hash";
-import { taskBehaviorSource } from "@/core/task/identity";
+import { taskBehaviorCallback, taskBehaviorSource } from "@/core/task/identity";
 import { TASK_KIND_ENUM } from "@/core/task/kind";
 import type { TaskKind } from "@/core/task/kind";
 
@@ -501,6 +501,8 @@ export class DAG<
                     throw new Error(`Task ID "${candidate.id}" already exists`);
                 }
 
+                this.#assertDuplicateCallback(existing, candidate);
+
                 continue;
             }
 
@@ -510,6 +512,8 @@ export class DAG<
                 if (pendingTask.name !== candidate.name) {
                     throw new Error(`Task ID "${candidate.id}" already exists`);
                 }
+
+                this.#assertDuplicateCallback(pendingTask, candidate);
 
                 continue;
             }
@@ -534,6 +538,28 @@ export class DAG<
         }
 
         return pending;
+    }
+
+    /**
+     * Reject a duplicate definition whose behavior source matches but whose
+     * callback instance does not.
+     *
+     * Callback source text omits captured values, so two distinct callbacks can
+     * share a task ID while behaving differently. Treating one as a duplicate
+     * would drop it without a trace; the caller must reuse the callback or give
+     * the task a distinct name.
+     */
+    #assertDuplicateCallback(existing: DAGTask, candidate: DAGTask): void {
+        const existingCallback = taskBehaviorCallback(existing.definition);
+        const candidateCallback = taskBehaviorCallback(candidate.definition);
+
+        if (existingCallback === candidateCallback) {
+            return;
+        }
+
+        throw new Error(
+            `Task "${candidate.name}" in DAG "${this.#name}" has the same callback source as an existing definition but a different callback instance; captured values are not part of task identity, so a duplicate registration would silently drop the task. Reuse the same callback or give the task a distinct name`
+        );
     }
 
     /** Remove tasks inserted by a failed batch; reused tasks are untouched. */

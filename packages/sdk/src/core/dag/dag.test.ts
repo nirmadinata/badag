@@ -95,6 +95,9 @@ const rawFn = (): string => "raw";
 // Captures its argument, so every call produces the same callback source text.
 const syncTableFn = (table: string) => () => table;
 
+// Callback identity is reference-based, so duplicate definitions must share it.
+const contextFn = (ctx: TaskContext<"scaled">) => ctx.name;
+
 describe("task definitions", () => {
     it("trims task names and passes them through context", () => {
         const definition = createTask("  my-task_name  ", {
@@ -417,13 +420,16 @@ describe("DAG registration", () => {
         expect(registered.triggerRule).toBe(DEFAULT_TRIGGER_RULE);
     });
 
-    // Documents a known identity blind spot rather than desired behavior.
-    // See docs/adr/0003-callback-identity-uses-source-text.md.
-    it("silently drops a same-name definition that differs only by captured value", () => {
-        const dag = createDAG("warehouse")
-            .chain(createTask("sync", { fn: syncTableFn("customers") }))
-            .chain(createTask("sync", { fn: syncTableFn("orders") }));
+    it("rejects a same-name definition that differs only by captured value", () => {
+        const dag = createDAG("warehouse").chain(
+            createTask("sync", { fn: syncTableFn("customers") })
+        );
 
+        expect(() =>
+            dag.chain(createTask("sync", { fn: syncTableFn("orders") }))
+        ).toThrow(/different callback instance/u);
+
+        // The rejected registration leaves the graph untouched.
         const registered = requireTask(dag, "sync");
         const { definition } = registered;
 
@@ -433,7 +439,6 @@ describe("DAG registration", () => {
             throw new Error(`Expected a regular task, got ${definition.kind}`);
         }
 
-        // The "orders" definition never runs; the first registration wins.
         expect(
             definition.fn({
                 id: registered.id,
@@ -441,8 +446,6 @@ describe("DAG registration", () => {
                 payload: undefined,
             })
         ).toBe("customers");
-        // The discarded definition really did capture a different value.
-        expect(syncTableFn("orders")()).toBe("orders");
     });
 
     it("rejects edges that cross DAG boundaries", () => {
@@ -497,9 +500,9 @@ describe("DAG registration", () => {
     });
 
     it("accepts context callbacks", () => {
-        const definition = createTask("scaled", { fn: (ctx) => ctx.name });
+        const definition = createTask("scaled", { fn: contextFn });
 
-        const definition2 = createTask("scaled", { fn: (ctx) => ctx.name });
+        const definition2 = createTask("scaled", { fn: contextFn });
 
         const dag = createDAG("etl").chain(definition);
         dag.chain(definition2);

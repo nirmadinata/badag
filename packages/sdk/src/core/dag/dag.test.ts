@@ -506,7 +506,6 @@ describe("DAG registration", () => {
             "Both tasks must belong to this DAG"
         );
         expect(registered.upstream.size).toBe(0);
-        expect(dag.getReadyTasks(new Set())).toStrictEqual([registered]);
     });
 
     it("does not expose a raw edge-insertion method", () => {
@@ -942,85 +941,6 @@ describe("DAG ordering", () => {
         }
 
         expect(namesOf(dag)).toStrictEqual(order.map((task) => task.name));
-    });
-});
-
-describe("DAG readiness", () => {
-    it("releases only unblocked tasks", () => {
-        const dag = createDAG("diamond");
-        const root = addTask(dag, { name: "root", fn: () => 0 });
-        const left = addTask(dag, { name: "left", fn: () => 0 });
-        const right = addTask(dag, { name: "right", fn: () => 0 });
-        const sink = addTask(dag, { name: "sink", fn: () => 0 });
-
-        crossDownstream([root], [left, right]);
-        crossDownstream([left, right], [sink]);
-
-        expect(dag.getReadyTasks(new Set())).toStrictEqual([root]);
-
-        const afterRoot = dag.getReadyTasks(new Set([root.id]));
-
-        expect(afterRoot).toHaveLength(2);
-        expect(afterRoot).toContain(left);
-        expect(afterRoot).toContain(right);
-
-        expect(dag.getReadyTasks(new Set([root.id, left.id]))).toStrictEqual([
-            right,
-        ]);
-    });
-
-    it("releases a fan-in task once every upstream completes", () => {
-        const dag = createDAG("diamond");
-        const root = addTask(dag, { name: "root", fn: () => 0 });
-        const left = addTask(dag, { name: "left", fn: () => 0 });
-        const right = addTask(dag, { name: "right", fn: () => 0 });
-        const sink = addTask(dag, { name: "sink", fn: () => 0 });
-
-        crossDownstream([root], [left, right]);
-        crossDownstream([left, right], [sink]);
-
-        expect(
-            dag.getReadyTasks(new Set([root.id, left.id, right.id]))
-        ).toStrictEqual([sink]);
-    });
-
-    it("returns an empty list for an empty DAG", () => {
-        expect(createDAG("empty").getReadyTasks(new Set())).toStrictEqual([]);
-    });
-
-    it("returns sources in registration order", () => {
-        const dag = createDAG("etl");
-        const first = addTask(dag, { name: "first", fn: () => 0 });
-        const second = addTask(dag, { name: "second", fn: () => 0 });
-
-        addTask(dag, { name: "third", fn: () => 0 });
-        second.dependsOn(first);
-
-        expect(
-            dag.getReadyTasks(new Set()).map((task) => task.name)
-        ).toStrictEqual(["first", "third"]);
-    });
-
-    it("never returns completed tasks", () => {
-        const dag = createDAG("etl");
-        const first = addTask(dag, { name: "first", fn: () => 0 });
-        const second = addTask(dag, { name: "second", fn: () => 0 });
-
-        first.setDownstream(second);
-
-        expect(
-            dag.getReadyTasks(new Set([first.id])).map((task) => task.name)
-        ).toStrictEqual(["second"]);
-        expect(dag.getReadyTasks(new Set([first.id, second.id]))).toStrictEqual(
-            []
-        );
-    });
-
-    it("ignores task IDs that are not in the DAG", () => {
-        const dag = createDAG("etl");
-        const first = addTask(dag, { name: "first", fn: () => 0 });
-
-        expect(dag.getReadyTasks(new Set(["missing"]))).toStrictEqual([first]);
     });
 });
 

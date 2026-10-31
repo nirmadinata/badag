@@ -1,6 +1,6 @@
 # @badag/sdk
 
-An Airflow-inspired DAG builder for TypeScript. Declare tasks, wire dependencies, then read back a topological order or poll which tasks are ready to run.
+An Airflow-inspired DAG builder for TypeScript. Declare tasks, wire dependencies, validate the graph, and read back a topological order. Execution state belongs to your runtime.
 
 - ESM-only, zero runtime dependencies.
 - Every edge inserted through the public methods is validated, so a `DAG` cannot become cyclic or cross DAG boundaries.
@@ -621,7 +621,7 @@ dag.addDependency(a, b);
 dag.addDependencies([a, b], [c, d]); // a -> c, a -> d, b -> c, b -> d
 ```
 
-Handles come from `dag.getTask()` or from execution helpers such as `topologicalSort()` and `getReadyTasks()`. Definitions work anywhere a handle does; edge methods register them on first use.
+Handles come from `dag.getTask()` or from `topologicalSort()`. Definitions work anywhere a handle does; edge methods register them on first use.
 
 Wiring sets link every member of one set to every member of the next. `chain()` registers definitions before linking; `crossDownstream()` takes handles only:
 
@@ -762,7 +762,7 @@ dag.chain(duplicate); // error: task "a" already exists in DAG "etl"
 - Static checks run for `chain()` calls with up to 40 positional wiring sets. Larger calls compile but are runtime-checked only, and their definitions and edges are not added to the DAG type state.
 - The checks follow the value returned by `chain()`. If the result is discarded (`dag.chain(a, b);`), later calls are runtime-checked only. `addDependency()`, `addDependencies()`, `setUpstream()`, `setDownstream()`, and `crossDownstream()` are likewise runtime-checked.
 - Generic helpers that widen task names or DAG state to `string` skip the static checks and rely on runtime validation.
-- Handles from `getTask()`, `topologicalSort()`, and `getReadyTasks()` carry the erased `AnyTaskDefinition`, so they add edges but no signatures; type-level duplicate detection compares regular `fn` signatures, while runtime remains authoritative for handle-only wiring.
+- Handles from `getTask()` and `topologicalSort()` carry the erased `AnyTaskDefinition`, so they add edges but no signatures; type-level duplicate detection compares regular `fn` signatures, while runtime remains authoritative for handle-only wiring.
 - Regular definitions with the same name and inferred `fn` type but different `fn` source cannot be distinguished statically; non-regular definitions are opaque to type-level signature checks. Runtime still rejects collisions.
 
 ### Validating a graph
@@ -870,28 +870,7 @@ for (const task of dag.topologicalSort()) {
 }
 ```
 
-Parallel, polling readiness with the set of completed **task IDs**:
-
-```ts
-const completed = new Set<string>();
-
-while (true) {
-    const ready = dag.getReadyTasks(completed);
-
-    if (ready.length === 0) {
-        break;
-    }
-
-    await Promise.all(
-        ready.map(async (task) => {
-            await runTask(task);
-            completed.add(task.id);
-        })
-    );
-}
-```
-
-`getReadyTasks()` is pure: it returns tasks that are not in `completed` and whose upstream tasks are all in `completed`. It does not remember previous calls.
+Readiness is runtime-owned. The SDK stores `triggerRule` but does not evaluate it, and it tracks no completed, running, failed, or skipped state. A scheduler derives readiness from its own outcomes plus each task's `upstream` set and `triggerRule`; there is no structural readiness query, because “all upstream finished” is not enough for `OneSuccess`, `OneFailed`, `AllDone`, `AllSkipped`, branch routing, or short-circuit pruning.
 
 ## Serialization
 
@@ -977,7 +956,7 @@ grouped.toJSON().tasks.map(({ name, upstream, downstream }) => ({
 | Export | Kind | Summary |
 | --- | --- | --- |
 | `createDAG` | function | `createDAG(name)` returns a `DAG`; keeps the literal name type, so `chain()` checks apply |
-| `DAG` | class | `name`, `tasks`, `getTask()`, `addDependency()`, `addDependencies()`, `chain()`, `parse`, `validate()`, `topologicalSort()`, `getReadyTasks()`, `toJSON()` |
+| `DAG` | class | `name`, `tasks`, `getTask()`, `addDependency()`, `addDependencies()`, `chain()`, `parse`, `validate()`, `topologicalSort()`, `toJSON()` |
 | `DAGTask` | type | Registered task handle; `id`, `name`, `kind`, `definition`, `description`, `config`, `triggerRule`, `upstream`, `downstream`, `setUpstream()`, `setDownstream()`, `dependsOn()`. Minted by `DAG`, not constructible by consumers |
 | `task` | function | Creates a regular task definition from a name and `{ fn }` input |
 | `sensor` | function | Creates a sensor definition storing a predicate and optional `pokeIntervalMs`; the SDK does not poll |
@@ -1029,7 +1008,7 @@ grouped.toJSON().tasks.map(({ name, upstream, downstream }) => ({
 - `DAGTask` is exported as a type only; obtain handles from `DAG` methods rather than constructing them.
 - `createDAG(name)` returns a `DAG<Name>` instance with the literal name preserved, so `chain()` checks apply exactly as they do for a directly constructed `DAG`; the constructor stays public.
 - `DAGTask.kind` identifies the factory, and `DAGTask.definition` retains the original kind-specific definition, including callbacks that are not serialized.
-- `getTask()`, `topologicalSort()`, `getReadyTasks()`, and `task.upstream` expose `DAGTask`. Narrow `task.definition.kind` to access the kind-specific behavior field and pass `{ id: task.id, name: task.name }` when invoking it.
+- `getTask()`, `topologicalSort()`, and `task.upstream` expose `DAGTask`. Narrow `task.definition.kind` to access the kind-specific behavior field and pass `{ id: task.id, name: task.name }` when invoking it.
 - `DAG` carries internal type parameters for the definitions and edges added through `chain()`. Annotating a value as plain `DAG` intentionally opts out of the compile-time checks above.
 - `parse` types each operand as a task or a flat list of tasks, so a string, a number, or a nested list fails to typecheck. It adds those definitions to the DAG's type state as signatures and declared branch sets, like `chain`, so duplicate definitions are caught at compile time; it adds no edges, because TypeScript cannot infer the literal `>>`/`<<` segments. Use `chain()` when compile-time cycle detection matters.
 - `toJSON()` returns a fresh `DAGJson` snapshot with `kind`, kind-specific serializable fields, and edges keyed by task name; functions are removed.

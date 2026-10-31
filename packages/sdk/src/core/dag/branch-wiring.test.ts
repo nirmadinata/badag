@@ -340,7 +340,7 @@ describe("branch wiring: precedence and repeats", () => {
         );
     });
 
-    it("leaves readiness and serialization untouched", () => {
+    it("leaves serialization untouched", () => {
         const dag = createDAG("surfaces").chain(route(["us"]), regular("us"));
 
         const branchJson = dag
@@ -348,13 +348,5 @@ describe("branch wiring: precedence and repeats", () => {
             .tasks.find((task) => task.name === "route");
 
         expect(branchJson?.downstream).toStrictEqual(["us"]);
-        expect(
-            dag.getReadyTasks(new Set()).map((task) => task.name)
-        ).toStrictEqual(["route"]);
-        expect(
-            dag
-                .getReadyTasks(new Set([requireTask(dag, "route").id]))
-                .map((task) => task.name)
-        ).toStrictEqual(["us"]);
     });
 });

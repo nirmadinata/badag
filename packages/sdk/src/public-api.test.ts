@@ -181,7 +181,6 @@ describe("public task types", () => {
         expectTypeOf(dag.name).toEqualTypeOf<"etl">();
         expectTypeOf(dag.tasks).toEqualTypeOf<ReadonlyMap<string, DAGTask>>();
         expectTypeOf(dag.topologicalSort()).toEqualTypeOf<DAGTask[]>();
-        expectTypeOf(dag.getReadyTasks(new Set())).toEqualTypeOf<DAGTask[]>();
     });
 
     it("creates the same DAG instance through createDAG", () => {

@@ -1,6 +1,6 @@
 # Badag
 
-A TypeScript SDK for declaring task graphs, wiring dependencies, and finding tasks ready to run.
+A TypeScript SDK for declaring task graphs, wiring dependencies, and validating their structure. Execution state belongs to a separate runtime.
 
 ## Language
 
@@ -62,9 +62,9 @@ A TypeScript SDK for declaring task graphs, wiring dependencies, and finding tas
 
 **Wiring step**: One validated edge between two wiring sets, derived from a wiring expression; `a >> b << c` yields two steps, `a -> b` and `c -> b`. _Avoid_: edge pair, link
 
-**Completion**: The fact that a task has finished executing; completion is supplied as a set of task IDs and carries no success, failure, or skip outcome. _Avoid_: done, terminal state
+**Completion**: A runtime fact that a task has finished executing, carrying no success, failure, or skip outcome by itself. The SDK stores no completion state. _Avoid_: done, terminal state
 
-**Ready task**: A task that has not completed and whose upstream tasks have all completed. Readiness is structural and ignores trigger rules. _Avoid_: runnable task, eligible task
+**Ready task**: A runtime decision that a task is eligible to run, derived from execution state, upstream outcomes, and its trigger rule. The SDK stores no readiness state. _Avoid_: runnable task, eligible task
 
 **Trigger rule**: A declared condition under which a scheduler may run a task, expressed in terms of upstream outcomes; the DAG stores it but does not evaluate it. _Avoid_: readiness rule, run condition
 

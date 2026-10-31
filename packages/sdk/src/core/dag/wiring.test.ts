@@ -680,22 +680,6 @@ describe("DAG.parse", () => {
         ]);
     });
 
-    it("reports readiness from parse-built edges", () => {
-        const a = createTask("a", { fn: () => "a" });
-        const b = createTask("b", { fn: () => "b" });
-        const c = createTask("c", { fn: () => "c" });
-        const dag = createDAG("etl").parse`${a} >> ${[b, c]}`;
-
-        const aHandle = requireTask(dag, "a");
-
-        expect(
-            dag.getReadyTasks(new Set()).map((task) => task.name)
-        ).toStrictEqual(["a"]);
-        expect(
-            dag.getReadyTasks(new Set([aHandle.id])).map((task) => task.name)
-        ).toStrictEqual(["b", "c"]);
-    });
-
     it("routes a declared branch set with a left-shift operator", () => {
         const declared = branch("declared", {
             branches: ["us", "eu"],
@@ -860,7 +844,6 @@ describe("DAG.parse", () => {
 
         expect(dag.tasks.size).toBe(42);
         expect(dag.topologicalSort()).toHaveLength(42);
-        expect(dag.getReadyTasks(new Set())).toHaveLength(42);
     });
 
     it("wires a chain longer than the static check limit", () => {

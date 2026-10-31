@@ -19,23 +19,6 @@ import type { DAGViolation } from "./validation";
 import { parseWiringExpression } from "./wiring";
 import type { WiringOperand } from "./wiring";
 
-/**
- * A task is ready once it is incomplete and every upstream task is done.
- */
-function isReady(task: DAGTask, completed: ReadonlySet<string>): boolean {
-    if (completed.has(task.id)) {
-        return false;
-    }
-
-    for (const upstream of task.upstream) {
-        if (!completed.has(upstream.id)) {
-            return false;
-        }
-    }
-
-    return true;
-}
-
 type TaskNameIndex = string;
 
 type TaskIdIndex = string;
@@ -389,21 +372,6 @@ export class DAG<
                 ready.push(downstream);
             }
         }
-    }
-
-    /**
-     * Get tasks whose dependencies are all in the completed set.
-     */
-    getReadyTasks(completed: ReadonlySet<string>): DAGTask[] {
-        const ready: DAGTask[] = [];
-
-        for (const task of this.#tasks.values()) {
-            if (isReady(task, completed)) {
-                ready.push(task);
-            }
-        }
-
-        return ready;
     }
 
     /**

@@ -36,14 +36,8 @@
         "vite": "^8.3.5",
       },
     },
-    "packages/db-schema": {
-      "name": "@badag/db-schema",
-      "peerDependencies": {
-        "drizzle-orm": "^0.45.4",
-      },
-    },
-    "packages/sdk": {
-      "name": "@badag/sdk",
+    "packages/core": {
+      "name": "@badag/core",
       "version": "0.0.0",
       "dependencies": {
         "@standard-schema/spec": "^1.1.0",
@@ -57,6 +51,26 @@
         "valibot": "^1.5.0",
         "vitest": "^5.0.5",
         "zod": "^4.6.7",
+      },
+    },
+    "packages/db-schema": {
+      "name": "@badag/db-schema",
+      "peerDependencies": {
+        "drizzle-orm": "^0.45.4",
+      },
+    },
+    "packages/sdk": {
+      "name": "@badag/sdk",
+      "version": "0.0.0",
+      "dependencies": {
+        "@badag/core": "workspace:*",
+      },
+      "devDependencies": {
+        "@types/node": "^26.6.5",
+        "bumpp": "^12.3.0",
+        "tsdown": "^0.23.1",
+        "typescript": "7.1.0-beta",
+        "vitest": "^5.0.5",
       },
     },
   },
@@ -74,6 +88,8 @@
     "@babel/types": ["@babel/types@7.29.11", "", { "dependencies": { "@babel/helper-string-parser": "^7.29.11", "@babel/helper-validator-identifier": "^7.29.7" } }, "sha512-WCsemW40Cpc6gouC1SrY6PBaZ+oLRlEVY9XBvZBI7il/HyUrb2nJ505wE1MHEFyDZNnrWDEuy4jL50WVHfTTSQ=="],
 
     "@badag/app": ["@badag/app@workspace:apps/app"],
+
+    "@badag/core": ["@badag/core@workspace:packages/core"],
 
     "@badag/db-schema": ["@badag/db-schema@workspace:packages/db-schema"],
 

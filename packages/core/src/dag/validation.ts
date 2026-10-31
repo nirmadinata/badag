@@ -1,5 +1,5 @@
-import { TASK_KIND_ENUM } from "@/core/task/kind";
-import { isTaskName } from "@/core/task/task-name";
+import { TASK_KIND_ENUM } from "@/task/kind";
+import { isTaskName } from "@/task/task-name";
 
 import { declaredBranches, quoteNames } from "./branch-wiring";
 import type { DAGTask } from "./dag-task";

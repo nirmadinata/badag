@@ -1,7 +1,7 @@
-import { hashTaskId } from "@/core/hash/hash";
-import { taskBehaviorCallback, taskBehaviorSource } from "@/core/task/identity";
-import { TASK_KIND_ENUM } from "@/core/task/kind";
-import type { TaskKind } from "@/core/task/kind";
+import { hashTaskId } from "@/hash/hash";
+import { taskBehaviorCallback, taskBehaviorSource } from "@/task/identity";
+import { TASK_KIND_ENUM } from "@/task/kind";
+import type { TaskKind } from "@/task/kind";
 
 import { assertBranchWiring } from "./branch-wiring";
 import type {

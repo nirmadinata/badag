@@ -1,14 +1,14 @@
-import { hashTaskId } from "@/core/hash/hash";
-import { taskBehaviorSource } from "@/core/task/identity";
-import { assertTaskName } from "@/core/task/task-name";
+import { hashTaskId } from "@/hash/hash";
+import { taskBehaviorSource } from "@/task/identity";
+import { assertTaskName } from "@/task/task-name";
 import type {
     AnyTaskDefinition,
     RegisteredTaskDefinition,
     TaskConfig,
     TaskKind,
-} from "@/core/task/types";
-import type { TriggerRule } from "@/core/trigger-rule";
-import { DEFAULT_TRIGGER_RULE } from "@/core/trigger-rule";
+} from "@/task/types";
+import type { TriggerRule } from "@/trigger-rule";
+import { DEFAULT_TRIGGER_RULE } from "@/trigger-rule";
 
 import type { DAG } from "./dag";
 

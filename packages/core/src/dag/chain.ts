@@ -8,7 +8,7 @@
  * plain `string` (generic helpers) skip the checks.
  */
 
-import type { TaskFn } from "@/core/task/types";
+import type { TaskFn } from "@/task/types";
 
 /** The structural shape the chain checks need from a handle or definition. */
 interface ChainTask {

@@ -1,7 +1,7 @@
 import { describe, expect, expectTypeOf, it } from "vitest";
 
-import { createDAG } from "@/core/dag/dag";
-import { TRIGGER_RULE_ENUM } from "@/core/trigger-rule";
+import { createDAG } from "@/dag/dag";
+import { TRIGGER_RULE_ENUM } from "@/trigger-rule";
 
 import { branch } from "./branch";
 import { delay } from "./delay";

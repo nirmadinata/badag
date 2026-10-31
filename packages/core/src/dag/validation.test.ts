@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { branch } from "@/core/task/branch";
-import { delay } from "@/core/task/delay";
-import { sensor } from "@/core/task/sensor";
-import { shortCircuit } from "@/core/task/short-circuit";
-import { task as createTask } from "@/core/task/task";
-import { trigger } from "@/core/task/trigger";
+import { branch } from "@/task/branch";
+import { delay } from "@/task/delay";
+import { sensor } from "@/task/sensor";
+import { shortCircuit } from "@/task/short-circuit";
+import { task as createTask } from "@/task/task";
+import { trigger } from "@/task/trigger";
 
 import { createDAG } from "./dag";
 import type { DAG } from "./dag";

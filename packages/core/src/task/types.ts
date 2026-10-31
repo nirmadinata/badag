@@ -5,7 +5,7 @@
 
 import type { StandardSchemaV1 } from "@standard-schema/spec";
 
-import type { TriggerRule } from "@/core/trigger-rule";
+import type { TriggerRule } from "@/trigger-rule";
 
 import type { TASK_KIND_ENUM, TaskKind } from "./kind";
 

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { branch } from "@/core/task/branch";
-import { task as createTask } from "@/core/task/task";
+import { branch } from "@/task/branch";
+import { task as createTask } from "@/task/task";
 
 import { createDAG } from "./dag";
 import type { DAG } from "./dag";

@@ -1,1 +1,63 @@
-export { createDAG } from "@badag/core";
+export {
+    branch,
+    createDAG,
+    delay,
+    sensor,
+    shortCircuit,
+    task,
+    TASK_KIND_ENUM,
+    trigger,
+} from "@badag/core";
+
+/**
+ * Task authoring types.
+ *
+ * Definitions, schemas, context, and metadata types are re-exported so
+ * consumers do not need a direct core dependency.
+ */
+export type {
+    AnyBranchTaskDefinition,
+    AnyDelayTaskDefinition,
+    AnySchema,
+    AnySensorTaskDefinition,
+    AnyShortCircuitTaskDefinition,
+    AnyTaskDefinition,
+    AnyTaskFn,
+    AnyTriggerTaskDefinition,
+    BranchChoice,
+    BranchChooser,
+    BranchTaskDefinition,
+    BranchTaskInput,
+    CreateBranch,
+    CreateDelay,
+    CreateSensor,
+    CreateShortCircuit,
+    CreateTask,
+    CreateTrigger,
+    DelayTaskDefinition,
+    DelayTaskInput,
+    MaybePromise,
+    RegisteredTaskDefinition,
+    SchemaOf,
+    SensorPredicate,
+    SensorTaskDefinition,
+    SensorTaskInput,
+    ShortCircuitCondition,
+    ShortCircuitTaskDefinition,
+    ShortCircuitTaskInput,
+    TaskConfig,
+    TaskContext,
+    TaskDefinitionBase,
+    TaskFn,
+    TaskKind,
+    TaskMetadata,
+    TaskParamInput,
+    TaskParamOutput,
+    TaskPayloadOf,
+    TaskProducedOf,
+    TaskSchema,
+    TaskSchemas,
+    TriggerRule,
+    TriggerTaskDefinition,
+    TriggerTaskInput,
+} from "@badag/core";

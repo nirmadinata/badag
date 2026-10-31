@@ -1,17 +1,17 @@
 # @badag/sdk
 
-The Badag SDK entry point. It exposes one export — `createDAG` — and everything else lives in the internal [`@badag/core`](../core/README.md) package: task factories, wiring, validation, and serialization.
+The Badag SDK entry point. It exports `createDAG`, every task factory, the task kind enum, and the task authoring types. Wiring, validation, and serialization live in the internal [`@badag/core`](../core/README.md) package.
 
 Inside this repository, core is imported from source and passed to `createDAG`. The SDK build bundles it, so `@badag/core` is not a runtime dependency of the published package.
 
 ```ts
-import { task } from "@badag/core";
-import { createDAG } from "@badag/sdk";
+import { createDAG, delay, task } from "@badag/sdk";
 
 const extract = task("extract", { fn: () => "raw" });
+const settle = delay("settle", { durationMs: 100 });
 const load = task("load", { fn: () => "stored" });
 
-const dag = createDAG("etl").chain(extract, load);
+const dag = createDAG("etl").chain(extract, settle, load);
 ```
 
 ## Install
@@ -24,9 +24,26 @@ bun add @badag/sdk
 
 ## API
 
-| Export      | Kind     | Summary                           |
-| ----------- | -------- | --------------------------------- |
+| Export | Kind | Summary |
+| --- | --- | --- |
 | `createDAG` | function | `createDAG(name)` returns a `DAG` |
+| `task`, `delay`, `branch`, `sensor`, `shortCircuit`, `trigger` | functions | Build a task definition of any kind |
+| `TASK_KIND_ENUM` | object | Supported task kind values |
+| Task types | types | Task definitions, factory inputs/outputs, schemas, context, metadata, and trigger rules |
+
+Task types cover every kind:
+
+```ts
+import type {
+    BranchTaskDefinition,
+    CreateTask,
+    TaskContext,
+    TaskDefinitionBase,
+    TaskFn,
+    TaskKind,
+    TriggerRule,
+} from "@badag/sdk";
+```
 
 ## License
 

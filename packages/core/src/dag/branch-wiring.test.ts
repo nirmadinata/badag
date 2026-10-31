@@ -1,8 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { branch } from "@/task/branch";
-import { task as createTask } from "@/task/task";
-
+import { branch } from "../task/branch";
+import { task as createTask } from "../task/task";
 import { createDAG } from "./dag";
 import type { DAG } from "./dag";
 import { crossDownstream } from "./dag-task";

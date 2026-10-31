@@ -2,8 +2,7 @@ import type { StandardSchemaV1 } from "@standard-schema/spec";
 import * as v from "valibot";
 import { describe, expect, expectTypeOf, it } from "vitest";
 
-import { createDAG } from "@/dag/dag";
-
+import { createDAG } from "../dag/dag";
 import { branch } from "./branch";
 import { delay } from "./delay";
 import { taskBehaviorSource } from "./identity";

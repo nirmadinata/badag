@@ -2,29 +2,13 @@
 
 An Airflow-inspired DAG builder for TypeScript. Declare tasks, wire dependencies, validate the graph, and read back a topological order. Execution state belongs to your runtime.
 
-- ESM-only, zero runtime dependencies.
+- Source-only internal package: `exports` points at `src/index.ts`, so there is no build step or published artifact.
 - Every edge inserted through the public methods is validated, so a `DAG` cannot become cyclic or cross DAG boundaries.
 - Task names stay literal types; graph links are `ReadonlySet`, so they cannot be mutated by accident.
 
-## Install
-
-```sh
-# bun
-bun add @badag/core
-
-# npm
-npm install @badag/core
-
-# pnpm
-pnpm add @badag/core
-
-# yarn
-yarn add @badag/core
-```
-
-The package ships ESM only (`dist/index.mjs`), so use `import` rather than `require`. It has no runtime dependencies, and the published bundle is a single self-contained module that bundles cleanly for Cloudflare Workers.
-
 ## Import
+
+Workspace consumers import the TypeScript source directly:
 
 ```ts
 import {

@@ -2,9 +2,9 @@
  * Serialized DAG and task snapshots returned by `DAG.toJSON()`.
  */
 
-import type { TASK_KIND_ENUM } from "@/task/kind";
-import type { TaskConfig, TaskKind } from "@/task/types";
-import type { TriggerRule } from "@/trigger-rule";
+import type { TASK_KIND_ENUM } from "../task/kind";
+import type { TaskConfig, TaskKind } from "../task/types";
+import type { TriggerRule } from "../trigger-rule";
 
 /**
  * Fields common to every serialized task kind.

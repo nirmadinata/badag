@@ -1,16 +1,15 @@
 import { describe, expect, expectTypeOf, it } from "vitest";
 
-import { FNV_128_HEX_LENGTH } from "@/hash/hash";
-import { TASK_KIND_ENUM } from "@/task/kind";
-import { task as createTask } from "@/task/task";
+import { FNV_128_HEX_LENGTH } from "../hash/hash";
+import { TASK_KIND_ENUM } from "../task/kind";
+import { task as createTask } from "../task/task";
 import type {
     TaskContext,
     TaskFn,
     TaskParamInput,
     TaskParamOutput,
-} from "@/task/types";
-import { DEFAULT_TRIGGER_RULE, TRIGGER_RULE_ENUM } from "@/trigger-rule";
-
+} from "../task/types";
+import { DEFAULT_TRIGGER_RULE, TRIGGER_RULE_ENUM } from "../trigger-rule";
 import { createDAG, DAG } from "./dag";
 import { crossDownstream, DAGTask } from "./dag-task";
 

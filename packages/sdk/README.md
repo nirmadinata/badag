@@ -1,6 +1,8 @@
 # @badag/sdk
 
-The Badag SDK entry point. It exposes one export — `createDAG` — and everything else lives in [`@badag/core`](../core/README.md): task factories, wiring, validation, and serialization.
+The Badag SDK entry point. It exposes one export — `createDAG` — and everything else lives in the internal [`@badag/core`](../core/README.md) package: task factories, wiring, validation, and serialization.
+
+Inside this repository, core is imported from source and passed to `createDAG`. The SDK build bundles it, so `@badag/core` is not a runtime dependency of the published package.
 
 ```ts
 import { task } from "@badag/core";
@@ -15,18 +17,16 @@ const dag = createDAG("etl").chain(extract, load);
 ## Install
 
 ```sh
-bun add @badag/sdk @badag/core
+bun add @badag/sdk
 ```
 
-`sdk` and `core` are ESM-only and ship declaration files. `createDAG(name)` preserves the literal DAG name in its return type, so the `chain()` checks from `@badag/core` apply unchanged.
+`sdk` is ESM-only and ships declaration files. `createDAG(name)` preserves the literal DAG name in its return type, so the `chain()` checks from `@badag/core` apply unchanged.
 
 ## API
 
-| Export | Kind | Summary |
-| --- | --- | --- |
-| `createDAG` | function | `createDAG(name)` returns a `DAG` from `@badag/core` |
-
-Import `DAG`, `DAGTask`, task factories, enums, and the remaining types from `@badag/core`.
+| Export      | Kind     | Summary                           |
+| ----------- | -------- | --------------------------------- |
+| `createDAG` | function | `createDAG(name)` returns a `DAG` |
 
 ## License
 

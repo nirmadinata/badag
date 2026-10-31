@@ -1,41 +1,19 @@
 {
     "name": "@badag/core",
-    "version": "0.0.0",
-    "description": "Badag core DAG declarations, wiring, and validation",
-    "homepage": "https://github.com/author/library#readme",
-    "bugs": {
-        "url": "https://github.com/author/library/issues"
-    },
-    "license": "MIT",
-    "author": "Rayhan Hamada <rayhanhamada1999@gmail.com>",
-    "repository": {
-        "type": "git",
-        "url": "git+https://github.com/author/library.git"
-    },
-    "files": [
-        "dist"
-    ],
+    "private": true,
     "type": "module",
     "exports": {
-        ".": "./dist/index.mjs",
-        "./package.json": "./package.json"
+        ".": "./src/index.ts"
     },
     "scripts": {
-        "build": "tsdown",
-        "dev": "tsdown --watch",
         "test": "vitest run",
-        "typecheck": "tsc --noEmit",
-        "release": "bumpp",
-        "prepublishOnly": "pnpm run build"
+        "typecheck": "tsc --noEmit"
     },
     "dependencies": {
         "@standard-schema/spec": "^1.1.0"
     },
     "devDependencies": {
-        "@types/node": "^26.6.5",
         "arktype": "^2.2.9",
-        "bumpp": "^12.3.0",
-        "tsdown": "^0.23.1",
         "typescript": "7.1.0-beta",
         "valibot": "^1.5.0",
         "vitest": "^5.0.5",

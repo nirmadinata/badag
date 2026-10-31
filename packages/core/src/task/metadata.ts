@@ -1,6 +1,5 @@
-import type { TriggerRule } from "@/trigger-rule";
-import { DEFAULT_TRIGGER_RULE } from "@/trigger-rule";
-
+import type { TriggerRule } from "../trigger-rule";
+import { DEFAULT_TRIGGER_RULE } from "../trigger-rule";
 import type { TaskMetadata } from "./types";
 
 /**

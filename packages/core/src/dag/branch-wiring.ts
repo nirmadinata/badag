@@ -1,5 +1,4 @@
-import { TASK_KIND_ENUM } from "@/task/kind";
-
+import { TASK_KIND_ENUM } from "../task/kind";
 import type { DAGTask } from "./dag-task";
 
 /**

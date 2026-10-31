@@ -596,6 +596,17 @@ describe("callback identity", () => {
         expect(dag.tasks.size).toBe(1);
     });
 
+    it("rejects separate bound callbacks with the same pre-bound value", () => {
+        const dag = createDAG("bound-same").chain(
+            task("sync", { fn: boundTarget.bind(null, "customers") })
+        );
+
+        expect(() =>
+            dag.chain(task("sync", { fn: boundTarget.bind(null, "customers") }))
+        ).toThrow(/different callback instance/u);
+        expect(dag.tasks.size).toBe(1);
+    });
+
     it("still deduplicates declarative kinds with equal behavior sources", () => {
         const dag = createDAG("declarative")
             .chain(delay("wait", { durationMs: 10, description: "first" }))

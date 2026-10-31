@@ -448,6 +448,43 @@ describe("DAG registration", () => {
         ).toBe("customers");
     });
 
+    it("accepts the surviving definition after rejecting a capture-only duplicate", () => {
+        const definition = createTask("sync", {
+            fn: syncTableFn("customers"),
+        });
+
+        const dag = createDAG("recovery").chain(definition);
+
+        expect(() =>
+            dag.chain(createTask("sync", { fn: syncTableFn("orders") }))
+        ).toThrow(/different callback instance/u);
+
+        expect(() => dag.chain(definition)).not.toThrow();
+        expect(dag.tasks.size).toBe(1);
+    });
+
+    it("rejects a capture-only duplicate introduced through a handle", () => {
+        const dag = createDAG("wiring");
+
+        const sync = addTask(dag, {
+            name: "sync",
+            fn: syncTableFn("customers"),
+        });
+
+        const load = addTask(dag, { name: "load", fn: rawFn });
+
+        sync.setDownstream(load);
+
+        expect(() =>
+            sync.setDownstream(
+                createTask("sync", { fn: syncTableFn("orders") })
+            )
+        ).toThrow(/different callback instance/u);
+
+        expect(dag.tasks.size).toBe(2);
+        expect([...sync.downstream]).toStrictEqual([load]);
+    });
+
     it("rejects edges that cross DAG boundaries", () => {
         const dag = createDAG("etl");
         const other = createDAG("other");

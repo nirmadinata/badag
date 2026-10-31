@@ -18,6 +18,9 @@ import type { WiringOperand } from "./wiring";
 // Callback identity is reference-based, so duplicate definitions must share it.
 const rawFn = (): string => "raw";
 
+// Captures its argument, so every call produces the same callback source text.
+const syncTableFn = (table: string) => () => table;
+
 function downstreamNames(dag: DAG): Record<string, string[]> {
     return Object.fromEntries(
         [...dag.tasks.values()].map((task) => [
@@ -751,6 +754,20 @@ describe("DAG.parse", () => {
 
         expect(dag.parse`${duplicate}`).toBe(dag);
         expect(requireTask(dag, "extract").description).toBe("first");
+        expect(dag.tasks.size).toBe(1);
+    });
+
+    it("rejects a capture-only duplicate in a wiring expression", () => {
+        const customers = createTask("sync", {
+            fn: syncTableFn("customers"),
+        });
+
+        const dag = createDAG("etl").parse`${customers}`;
+
+        expect(
+            () =>
+                dag.parse`${createTask("sync", { fn: syncTableFn("orders") })}`
+        ).toThrow(/different callback instance/u);
         expect(dag.tasks.size).toBe(1);
     });
 

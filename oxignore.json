@@ -1,1 +1,8 @@
-["**/.agents/**", "**/.cloudflare/**", "**/migrations/**"]
+[
+    "**/.agents/**",
+    "**/.cloudflare/**",
+    "**/migrations/**",
+    "**/components/ui/**",
+    "**/routeTree.gen.ts",
+    "**/skills-lock.json"
+]

@@ -23,4 +23,18 @@ export default defineConfig({
         "class-methods-use-this": "off",
         "max-classes-per-file": "off",
     },
+    overrides: [
+        {
+            // Shiki writes per-token CSS custom properties (--shiki-light*,
+            // --shiki-dark*) into `htmlStyle`; they are chosen at runtime and
+            // cannot be expressed as static classes.
+            files: ["apps/dashboard/src/lib/highlighter.tsx"],
+            rules: {
+                "shadcn/no-inline-styles": [
+                    "error",
+                    { allowDynamicIdentifiers: ["token.htmlStyle"] },
+                ],
+            },
+        },
+    ],
 });

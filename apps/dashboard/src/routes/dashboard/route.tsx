@@ -30,7 +30,10 @@ const DashboardLayout = () => {
         <SidebarProvider>
             <AppSidebar isAdmin={user.role === "admin"} />
             <SidebarInset>
-                <DashboardHeader onOpenCommand={() => setCommandOpen(true)} />
+                <DashboardHeader
+                    onOpenCommand={() => setCommandOpen(true)}
+                    user={user}
+                />
                 <div className="flex flex-1 flex-col p-4 md:p-6">
                     <Outlet />
                 </div>

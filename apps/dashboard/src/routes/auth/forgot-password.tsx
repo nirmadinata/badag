@@ -1,45 +1,13 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeftIcon, MailIcon } from "lucide-react";
-import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { FieldGroup } from "@/components/ui/field";
 import { AuthCard } from "@/features/auth/components/auth-card";
-import { useAppForm } from "@/features/auth/form";
-import { forgotPasswordSchema } from "@/features/auth/schemas";
-import { authClient } from "@/integrations/better-auth/client";
+import { useForgotPasswordForm } from "@/features/auth/hooks/use-forgot-password-form";
 
 const ForgotPasswordPage = () => {
-    const [sent, setSent] = useState(false);
-    const [error, setError] = useState<string>();
-
-    const form = useAppForm({
-        defaultValues: { email: "" },
-        validators: {
-            onChange: forgotPasswordSchema,
-            onSubmit: forgotPasswordSchema,
-        },
-        onSubmit: async ({ value }) => {
-            setError(undefined);
-
-            const { error: requestError } =
-                await authClient.requestPasswordReset({
-                    email: value.email,
-                    redirectTo: "/auth/reset-password",
-                });
-
-            if (requestError) {
-                setError(
-                    requestError.message ??
-                        "Could not send the reset instructions."
-                );
-
-                return;
-            }
-
-            setSent(true);
-        },
-    });
+    const { error, form, sent } = useForgotPasswordForm();
 
     return (
         <AuthCard

@@ -1,5 +1,3 @@
-import { useState } from "react";
-
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -12,9 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { FieldGroup } from "@/components/ui/field";
 import { Label } from "@/components/ui/label";
-import { useAppForm } from "@/features/auth/form";
-import { setupSchema } from "@/features/auth/schemas";
-import { authClient } from "@/integrations/better-auth/client";
+import { useCreateUserForm } from "@/features/users/hooks/use-create-user-form";
 
 interface CreateUserDialogProps {
     open: boolean;
@@ -27,35 +23,9 @@ export const CreateUserDialog = ({
     onOpenChange,
     onCreated,
 }: CreateUserDialogProps) => {
-    const [isAdmin, setIsAdmin] = useState(false);
-    const [error, setError] = useState<string>();
-
-    const form = useAppForm({
-        defaultValues: { fullName: "", email: "", password: "" },
-        validators: { onChange: setupSchema, onSubmit: setupSchema },
-        onSubmit: async ({ value }) => {
-            setError(undefined);
-
-            const { error: createError } = await authClient.admin.createUser({
-                email: value.email,
-                name: value.fullName,
-                password: value.password,
-                role: isAdmin ? "admin" : "user",
-            });
-
-            if (createError) {
-                setError(
-                    createError.message ?? "Could not create the account."
-                );
-
-                return;
-            }
-
-            form.reset();
-            setIsAdmin(false);
-            onOpenChange(false);
-            onCreated();
-        },
+    const { error, form, isAdmin, setIsAdmin } = useCreateUserForm({
+        onCreated,
+        onOpenChange,
     });
 
     return (

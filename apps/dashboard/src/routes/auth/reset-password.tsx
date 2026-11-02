@@ -1,19 +1,17 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import {
     ArrowLeftIcon,
     CheckIcon,
     CircleIcon,
     KeyRoundIcon,
 } from "lucide-react";
-import { useState } from "react";
 import * as v from "valibot";
 
 import { Button } from "@/components/ui/button";
 import { FieldGroup } from "@/components/ui/field";
 import { AuthCard } from "@/features/auth/components/auth-card";
-import { useAppForm } from "@/features/auth/form";
-import { PASSWORD_RULES, resetPasswordSchema } from "@/features/auth/schemas";
-import { authClient } from "@/integrations/better-auth/client";
+import { useResetPasswordForm } from "@/features/auth/hooks/use-reset-password-form";
+import { PASSWORD_RULES } from "@/features/auth/schemas";
 
 const PasswordRules = ({ password }: { password: string }) => (
     <ul className="flex flex-col gap-2">
@@ -42,39 +40,8 @@ const PasswordRules = ({ password }: { password: string }) => (
 );
 
 const ResetPasswordPage = () => {
-    const navigate = useNavigate();
     const { token } = Route.useSearch();
-    const [error, setError] = useState<string>();
-
-    const form = useAppForm({
-        defaultValues: { password: "", confirmPassword: "" },
-        validators: {
-            onChange: resetPasswordSchema,
-            onSubmit: resetPasswordSchema,
-        },
-        onSubmit: async ({ value }) => {
-            if (!token) {
-                setError("This reset link is missing its token.");
-
-                return;
-            }
-
-            setError(undefined);
-
-            const { error: resetError } = await authClient.resetPassword({
-                newPassword: value.password,
-                token,
-            });
-
-            if (resetError) {
-                setError(resetError.message ?? "Could not reset the password.");
-
-                return;
-            }
-
-            await navigate({ to: "/auth/sign-in" });
-        },
-    });
+    const { error, form } = useResetPasswordForm(token);
 
     return (
         <AuthCard

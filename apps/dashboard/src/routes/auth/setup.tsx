@@ -1,46 +1,13 @@
-import {
-    createFileRoute,
-    Link,
-    redirect,
-    useNavigate,
-} from "@tanstack/react-router";
+import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { InfoIcon, UserPlusIcon } from "lucide-react";
-import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { FieldGroup } from "@/components/ui/field";
 import { AuthCard } from "@/features/auth/components/auth-card";
-import { useAppForm } from "@/features/auth/form";
-import { setupSchema } from "@/features/auth/schemas";
-import { authClient } from "@/integrations/better-auth/client";
+import { useSetupForm } from "@/features/auth/hooks/use-setup-form";
 
 const SetupPage: React.FC = () => {
-    const navigate = useNavigate();
-    const [error, setError] = useState<string>();
-
-    const form = useAppForm({
-        defaultValues: { fullName: "", email: "", password: "" },
-        validators: { onChange: setupSchema, onSubmit: setupSchema },
-        onSubmit: async ({ value }) => {
-            setError(undefined);
-
-            const { error: signUpError } = await authClient.signUp.email({
-                email: value.email,
-                name: value.fullName,
-                password: value.password,
-            });
-
-            if (signUpError) {
-                setError(
-                    signUpError.message ?? "Could not create the account."
-                );
-
-                return;
-            }
-
-            await navigate({ to: "/dashboard" });
-        },
-    });
+    const { error, form } = useSetupForm();
 
     return (
         <AuthCard

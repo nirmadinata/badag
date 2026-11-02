@@ -1,46 +1,14 @@
-import {
-    createFileRoute,
-    Link,
-    redirect,
-    useNavigate,
-} from "@tanstack/react-router";
-import { useState } from "react";
+import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { FieldGroup } from "@/components/ui/field";
 import { Label } from "@/components/ui/label";
 import { AuthCard } from "@/features/auth/components/auth-card";
-import { useAppForm } from "@/features/auth/form";
-import { signInSchema } from "@/features/auth/schemas";
-import { authClient } from "@/integrations/better-auth/client";
+import { useSignInForm } from "@/features/auth/hooks/use-sign-in-form";
 
 const SignInPage = () => {
-    const navigate = useNavigate();
-    const [remember, setRemember] = useState(true);
-    const [error, setError] = useState<string>();
-
-    const form = useAppForm({
-        defaultValues: { email: "", password: "" },
-        validators: { onChange: signInSchema, onSubmit: signInSchema },
-        onSubmit: async ({ value }) => {
-            setError(undefined);
-
-            const { error: signInError } = await authClient.signIn.email({
-                email: value.email,
-                password: value.password,
-                rememberMe: remember,
-            });
-
-            if (signInError) {
-                setError(signInError.message ?? "Could not sign in.");
-
-                return;
-            }
-
-            await navigate({ to: "/dashboard" });
-        },
-    });
+    const { error, form, remember, setRemember } = useSignInForm();
 
     return (
         <AuthCard

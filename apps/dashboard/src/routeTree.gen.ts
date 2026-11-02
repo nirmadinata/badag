@@ -18,6 +18,7 @@ import { Route as AuthSetupRouteImport } from './routes/auth/setup'
 import { Route as AuthSignInRouteImport } from './routes/auth/sign-in'
 import { Route as DashboardIndexRouteImport } from './routes/dashboard/index'
 import { Route as DashboardActivityRouteImport } from './routes/dashboard/activity'
+import { Route as DashboardProfileRouteImport } from './routes/dashboard/profile'
 import { Route as DashboardUsersRouteImport } from './routes/dashboard/users'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 
@@ -66,6 +67,11 @@ const DashboardActivityRoute = DashboardActivityRouteImport.update({
   path: '/activity',
   getParentRoute: () => DashboardRouteRoute,
 } as any)
+const DashboardProfileRoute = DashboardProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => DashboardRouteRoute,
+} as any)
 const DashboardUsersRoute = DashboardUsersRouteImport.update({
   id: '/users',
   path: '/users',
@@ -86,6 +92,7 @@ export interface FileRoutesByFullPath {
   '/auth/setup': typeof AuthSetupRoute
   '/auth/sign-in': typeof AuthSignInRoute
   '/dashboard/activity': typeof DashboardActivityRoute
+  '/dashboard/profile': typeof DashboardProfileRoute
   '/dashboard/users': typeof DashboardUsersRoute
   '/dashboard/': typeof DashboardIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -98,6 +105,7 @@ export interface FileRoutesByTo {
   '/auth/setup': typeof AuthSetupRoute
   '/auth/sign-in': typeof AuthSignInRoute
   '/dashboard/activity': typeof DashboardActivityRoute
+  '/dashboard/profile': typeof DashboardProfileRoute
   '/dashboard/users': typeof DashboardUsersRoute
   '/dashboard': typeof DashboardIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -112,6 +120,7 @@ export interface FileRoutesById {
   '/auth/setup': typeof AuthSetupRoute
   '/auth/sign-in': typeof AuthSignInRoute
   '/dashboard/activity': typeof DashboardActivityRoute
+  '/dashboard/profile': typeof DashboardProfileRoute
   '/dashboard/users': typeof DashboardUsersRoute
   '/dashboard/': typeof DashboardIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -127,6 +136,7 @@ export interface FileRouteTypes {
     | '/auth/setup'
     | '/auth/sign-in'
     | '/dashboard/activity'
+    | '/dashboard/profile'
     | '/dashboard/users'
     | '/dashboard/'
     | '/api/auth/$'
@@ -139,6 +149,7 @@ export interface FileRouteTypes {
     | '/auth/setup'
     | '/auth/sign-in'
     | '/dashboard/activity'
+    | '/dashboard/profile'
     | '/dashboard/users'
     | '/dashboard'
     | '/api/auth/$'
@@ -152,6 +163,7 @@ export interface FileRouteTypes {
     | '/auth/setup'
     | '/auth/sign-in'
     | '/dashboard/activity'
+    | '/dashboard/profile'
     | '/dashboard/users'
     | '/dashboard/'
     | '/api/auth/$'
@@ -229,6 +241,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardActivityRouteImport
       parentRoute: typeof DashboardRouteRoute
     }
+    '/dashboard/profile': {
+      id: '/dashboard/profile'
+      path: '/profile'
+      fullPath: '/dashboard/profile'
+      preLoaderRoute: typeof DashboardProfileRouteImport
+      parentRoute: typeof DashboardRouteRoute
+    }
     '/dashboard/users': {
       id: '/dashboard/users'
       path: '/users'
@@ -266,12 +285,14 @@ const AuthRouteRouteWithChildren = AuthRouteRoute._addFileChildren(
 
 interface DashboardRouteRouteChildren {
   DashboardActivityRoute: typeof DashboardActivityRoute
+  DashboardProfileRoute: typeof DashboardProfileRoute
   DashboardUsersRoute: typeof DashboardUsersRoute
   DashboardIndexRoute: typeof DashboardIndexRoute
 }
 
 const DashboardRouteRouteChildren: DashboardRouteRouteChildren = {
   DashboardActivityRoute: DashboardActivityRoute,
+  DashboardProfileRoute: DashboardProfileRoute,
   DashboardUsersRoute: DashboardUsersRoute,
   DashboardIndexRoute: DashboardIndexRoute,
 }

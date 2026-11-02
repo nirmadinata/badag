@@ -6,7 +6,7 @@
 import { DurableObject, WorkflowEntrypoint } from "cloudflare:workers";
 import type { WorkflowEvent, WorkflowStep } from "cloudflare:workers";
 
-import { migrateTaskOrchestratorDB } from "@/db";
+import { migrateTaskOrchestratorDB } from "@/integrations/db/orchestrator";
 
 interface TaskOrchestratorDoProps {
     placeholder: string;

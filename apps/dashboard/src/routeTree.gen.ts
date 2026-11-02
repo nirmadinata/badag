@@ -18,6 +18,8 @@ import { Route as AuthSetupRouteImport } from './routes/auth/setup'
 import { Route as AuthSignInRouteImport } from './routes/auth/sign-in'
 import { Route as DashboardIndexRouteImport } from './routes/dashboard/index'
 import { Route as DashboardActivityRouteImport } from './routes/dashboard/activity'
+import { Route as DashboardUsersRouteImport } from './routes/dashboard/users'
+import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -64,6 +66,16 @@ const DashboardActivityRoute = DashboardActivityRouteImport.update({
   path: '/activity',
   getParentRoute: () => DashboardRouteRoute,
 } as any)
+const DashboardUsersRoute = DashboardUsersRouteImport.update({
+  id: '/users',
+  path: '/users',
+  getParentRoute: () => DashboardRouteRoute,
+} as any)
+const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
+  id: '/api/auth/$',
+  path: '/api/auth/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -74,7 +86,9 @@ export interface FileRoutesByFullPath {
   '/auth/setup': typeof AuthSetupRoute
   '/auth/sign-in': typeof AuthSignInRoute
   '/dashboard/activity': typeof DashboardActivityRoute
+  '/dashboard/users': typeof DashboardUsersRoute
   '/dashboard/': typeof DashboardIndexRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -84,7 +98,9 @@ export interface FileRoutesByTo {
   '/auth/setup': typeof AuthSetupRoute
   '/auth/sign-in': typeof AuthSignInRoute
   '/dashboard/activity': typeof DashboardActivityRoute
+  '/dashboard/users': typeof DashboardUsersRoute
   '/dashboard': typeof DashboardIndexRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -96,7 +112,9 @@ export interface FileRoutesById {
   '/auth/setup': typeof AuthSetupRoute
   '/auth/sign-in': typeof AuthSignInRoute
   '/dashboard/activity': typeof DashboardActivityRoute
+  '/dashboard/users': typeof DashboardUsersRoute
   '/dashboard/': typeof DashboardIndexRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -109,7 +127,9 @@ export interface FileRouteTypes {
     | '/auth/setup'
     | '/auth/sign-in'
     | '/dashboard/activity'
+    | '/dashboard/users'
     | '/dashboard/'
+    | '/api/auth/$'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -119,7 +139,9 @@ export interface FileRouteTypes {
     | '/auth/setup'
     | '/auth/sign-in'
     | '/dashboard/activity'
+    | '/dashboard/users'
     | '/dashboard'
+    | '/api/auth/$'
   id:
     | '__root__'
     | '/'
@@ -130,13 +152,16 @@ export interface FileRouteTypes {
     | '/auth/setup'
     | '/auth/sign-in'
     | '/dashboard/activity'
+    | '/dashboard/users'
     | '/dashboard/'
+    | '/api/auth/$'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthRouteRoute: typeof AuthRouteRouteWithChildren
   DashboardRouteRoute: typeof DashboardRouteRouteWithChildren
+  ApiAuthSplatRoute: typeof ApiAuthSplatRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -204,6 +229,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardActivityRouteImport
       parentRoute: typeof DashboardRouteRoute
     }
+    '/dashboard/users': {
+      id: '/dashboard/users'
+      path: '/users'
+      fullPath: '/dashboard/users'
+      preLoaderRoute: typeof DashboardUsersRouteImport
+      parentRoute: typeof DashboardRouteRoute
+    }
+    '/api/auth/$': {
+      id: '/api/auth/$'
+      path: '/api/auth/$'
+      fullPath: '/api/auth/$'
+      preLoaderRoute: typeof ApiAuthSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -227,11 +266,13 @@ const AuthRouteRouteWithChildren = AuthRouteRoute._addFileChildren(
 
 interface DashboardRouteRouteChildren {
   DashboardActivityRoute: typeof DashboardActivityRoute
+  DashboardUsersRoute: typeof DashboardUsersRoute
   DashboardIndexRoute: typeof DashboardIndexRoute
 }
 
 const DashboardRouteRouteChildren: DashboardRouteRouteChildren = {
   DashboardActivityRoute: DashboardActivityRoute,
+  DashboardUsersRoute: DashboardUsersRoute,
   DashboardIndexRoute: DashboardIndexRoute,
 }
 
@@ -243,6 +284,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthRouteRoute: AuthRouteRouteWithChildren,
   DashboardRouteRoute: DashboardRouteRouteWithChildren,
+  ApiAuthSplatRoute: ApiAuthSplatRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -15,7 +15,10 @@ import {
     InputGroupInput,
 } from "@/components/ui/input-group";
 
-interface PasswordFieldProps extends Omit<ComponentProps<"input">, "type"> {
+interface PasswordFieldProps extends Omit<
+    ComponentProps<typeof InputGroupInput>,
+    "type"
+> {
     id: string;
     label: string;
     description?: string;

@@ -1,18 +1,45 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import {
+    createFileRoute,
+    Link,
+    redirect,
+    useNavigate,
+} from "@tanstack/react-router";
+import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { FieldGroup } from "@/components/ui/field";
 import { Label } from "@/components/ui/label";
 import { AuthCard } from "@/features/auth/components/auth-card";
-import { SocialAuth } from "@/features/auth/components/social-auth";
 import { useAppForm } from "@/features/auth/form";
 import { signInSchema } from "@/features/auth/schemas";
+import { authClient } from "@/integrations/better-auth/client";
 
 const SignInPage = () => {
+    const navigate = useNavigate();
+    const [remember, setRemember] = useState(true);
+    const [error, setError] = useState<string>();
+
     const form = useAppForm({
         defaultValues: { email: "", password: "" },
         validators: { onChange: signInSchema, onSubmit: signInSchema },
+        onSubmit: async ({ value }) => {
+            setError(undefined);
+
+            const { error: signInError } = await authClient.signIn.email({
+                email: value.email,
+                password: value.password,
+                rememberMe: remember,
+            });
+
+            if (signInError) {
+                setError(signInError.message ?? "Could not sign in.");
+
+                return;
+            }
+
+            await navigate({ to: "/dashboard" });
+        },
     });
 
     return (
@@ -20,7 +47,6 @@ const SignInPage = () => {
             description="Sign in to inspect graphs, runs, and audits."
             title="Welcome back"
         >
-            <SocialAuth />
             <form
                 className="mt-5"
                 noValidate
@@ -51,7 +77,13 @@ const SignInPage = () => {
                     </form.AppField>
                     <div className="flex items-center justify-between gap-4">
                         <div className="flex items-center gap-2">
-                            <Checkbox defaultChecked id="remember" />
+                            <Checkbox
+                                checked={remember}
+                                id="remember"
+                                onCheckedChange={(checked) =>
+                                    setRemember(checked === true)
+                                }
+                            />
                             <Label htmlFor="remember">Remember me</Label>
                         </div>
                         <Link
@@ -61,6 +93,9 @@ const SignInPage = () => {
                             Forgot password?
                         </Link>
                     </div>
+                    {error ? (
+                        <p className="text-destructive text-sm">{error}</p>
+                    ) : null}
                     <Button className="w-full" size="lg" type="submit">
                         Sign in
                     </Button>
@@ -71,6 +106,11 @@ const SignInPage = () => {
 };
 
 export const Route = createFileRoute("/auth/sign-in")({
+    beforeLoad: ({ context }) => {
+        if (context.authState.user) {
+            throw redirect({ to: "/dashboard" });
+        }
+    },
     head: () => ({
         meta: [
             { title: "Sign in · Badag" },

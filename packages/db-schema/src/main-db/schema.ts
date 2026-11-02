@@ -21,6 +21,8 @@ import {
     DAG_TASK_TYPE_MAX_LENGTH,
 } from "./constants";
 
+export * from "./auth-schema.ts";
+
 // Logical DAG
 export const dags = sqliteTable(
     "dags",

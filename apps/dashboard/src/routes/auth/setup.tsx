@@ -1,16 +1,45 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import {
+    createFileRoute,
+    Link,
+    redirect,
+    useNavigate,
+} from "@tanstack/react-router";
 import { InfoIcon, UserPlusIcon } from "lucide-react";
+import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { FieldGroup } from "@/components/ui/field";
 import { AuthCard } from "@/features/auth/components/auth-card";
 import { useAppForm } from "@/features/auth/form";
 import { setupSchema } from "@/features/auth/schemas";
+import { authClient } from "@/integrations/better-auth/client";
 
-const SetupPage = () => {
+const SetupPage: React.FC = () => {
+    const navigate = useNavigate();
+    const [error, setError] = useState<string>();
+
     const form = useAppForm({
         defaultValues: { fullName: "", email: "", password: "" },
         validators: { onChange: setupSchema, onSubmit: setupSchema },
+        onSubmit: async ({ value }) => {
+            setError(undefined);
+
+            const { error: signUpError } = await authClient.signUp.email({
+                email: value.email,
+                name: value.fullName,
+                password: value.password,
+            });
+
+            if (signUpError) {
+                setError(
+                    signUpError.message ?? "Could not create the account."
+                );
+
+                return;
+            }
+
+            await navigate({ to: "/dashboard" });
+        },
     });
 
     return (
@@ -68,6 +97,9 @@ const SetupPage = () => {
                             />
                         )}
                     </form.AppField>
+                    {error ? (
+                        <p className="text-destructive text-sm">{error}</p>
+                    ) : null}
                     <Button className="w-full" size="lg" type="submit">
                         Create account
                     </Button>
@@ -89,6 +121,17 @@ const SetupPage = () => {
 };
 
 export const Route = createFileRoute("/auth/setup")({
+    beforeLoad: ({ context }) => {
+        const { setupRequired, user } = context.authState;
+
+        if (user) {
+            throw redirect({ to: "/dashboard" });
+        }
+
+        if (!setupRequired) {
+            throw redirect({ to: "/auth/sign-in" });
+        }
+    },
     head: () => ({
         meta: [
             { title: "Create your account · Badag" },

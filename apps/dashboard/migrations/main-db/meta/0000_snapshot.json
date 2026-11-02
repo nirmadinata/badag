@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "ebdf8c28-9023-4d20-a833-49f7a4d55c13",
+  "id": "d99903d0-f26b-4e0c-b682-525e1a8e3dac",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "dag_edges": {

@@ -1,5 +1,5 @@
 import journal from './meta/_journal.json';
-import m0000 from './0000_cheerful_amazoness.sql';
+import m0000 from './0000_broad_slyde.sql';
 
   export default {
     journal,

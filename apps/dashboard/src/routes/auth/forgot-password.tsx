@@ -4,17 +4,10 @@ import { ArrowLeftIcon, MailIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FieldGroup } from "@/components/ui/field";
 import { AuthCard } from "@/features/auth/components/auth-card";
-import { useAppForm } from "@/features/auth/form";
-import { forgotPasswordSchema } from "@/features/auth/schemas";
+import { useForgotPasswordForm } from "@/features/auth/hooks/use-forgot-password-form";
 
 const ForgotPasswordPage = () => {
-    const form = useAppForm({
-        defaultValues: { email: "" },
-        validators: {
-            onChange: forgotPasswordSchema,
-            onSubmit: forgotPasswordSchema,
-        },
-    });
+    const { error, form, sent } = useForgotPasswordForm();
 
     return (
         <AuthCard
@@ -51,6 +44,15 @@ const ForgotPasswordPage = () => {
                             />
                         )}
                     </form.AppField>
+                    {sent ? (
+                        <p className="text-muted-foreground text-sm">
+                            If that email matches an account, reset instructions
+                            are on their way.
+                        </p>
+                    ) : null}
+                    {error ? (
+                        <p className="text-destructive text-sm">{error}</p>
+                    ) : null}
                     <Button className="w-full" size="lg" type="submit">
                         Send reset link
                     </Button>

@@ -1,26 +1,20 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { FieldGroup } from "@/components/ui/field";
 import { Label } from "@/components/ui/label";
 import { AuthCard } from "@/features/auth/components/auth-card";
-import { SocialAuth } from "@/features/auth/components/social-auth";
-import { useAppForm } from "@/features/auth/form";
-import { signInSchema } from "@/features/auth/schemas";
+import { useSignInForm } from "@/features/auth/hooks/use-sign-in-form";
 
 const SignInPage = () => {
-    const form = useAppForm({
-        defaultValues: { email: "", password: "" },
-        validators: { onChange: signInSchema, onSubmit: signInSchema },
-    });
+    const { error, form, remember, setRemember } = useSignInForm();
 
     return (
         <AuthCard
             description="Sign in to inspect graphs, runs, and audits."
             title="Welcome back"
         >
-            <SocialAuth />
             <form
                 className="mt-5"
                 noValidate
@@ -51,7 +45,13 @@ const SignInPage = () => {
                     </form.AppField>
                     <div className="flex items-center justify-between gap-4">
                         <div className="flex items-center gap-2">
-                            <Checkbox defaultChecked id="remember" />
+                            <Checkbox
+                                checked={remember}
+                                id="remember"
+                                onCheckedChange={(checked) =>
+                                    setRemember(checked === true)
+                                }
+                            />
                             <Label htmlFor="remember">Remember me</Label>
                         </div>
                         <Link
@@ -61,6 +61,9 @@ const SignInPage = () => {
                             Forgot password?
                         </Link>
                     </div>
+                    {error ? (
+                        <p className="text-destructive text-sm">{error}</p>
+                    ) : null}
                     <Button className="w-full" size="lg" type="submit">
                         Sign in
                     </Button>
@@ -71,6 +74,11 @@ const SignInPage = () => {
 };
 
 export const Route = createFileRoute("/auth/sign-in")({
+    beforeLoad: ({ context }) => {
+        if (context.authState.user) {
+            throw redirect({ to: "/dashboard" });
+        }
+    },
     head: () => ({
         meta: [
             { title: "Sign in · Badag" },

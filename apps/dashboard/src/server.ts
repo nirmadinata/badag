@@ -1,5 +1,7 @@
 import handler, { createServerEntry } from "@tanstack/react-start/server-entry";
 
+export * from "@/exports";
+
 // Custom Start server entrypoint: delegate to the built-in handler while
 // leaving room for request/response customization.
 export default createServerEntry({

@@ -1,5 +1,5 @@
 {
-    "include": ["**/*.ts", "**/*.tsx"],
+    "include": ["**/*.ts", "**/*.tsx", ".cloudflare/types"],
     "compilerOptions": {
         "target": "ES2022",
         "jsx": "react-jsx",
@@ -13,6 +13,7 @@
         /* Bundler mode */
         "moduleResolution": "bundler",
         "allowImportingTsExtensions": true,
+        "allowJs": true,
         "verbatimModuleSyntax": true,
         "noEmit": true,
 

@@ -5,12 +5,13 @@ import {
     CircleIcon,
     KeyRoundIcon,
 } from "lucide-react";
+import * as v from "valibot";
 
 import { Button } from "@/components/ui/button";
 import { FieldGroup } from "@/components/ui/field";
 import { AuthCard } from "@/features/auth/components/auth-card";
-import { useAppForm } from "@/features/auth/form";
-import { PASSWORD_RULES, resetPasswordSchema } from "@/features/auth/schemas";
+import { useResetPasswordForm } from "@/features/auth/hooks/use-reset-password-form";
+import { PASSWORD_RULES } from "@/features/auth/schemas";
 
 const PasswordRules = ({ password }: { password: string }) => (
     <ul className="flex flex-col gap-2">
@@ -39,13 +40,8 @@ const PasswordRules = ({ password }: { password: string }) => (
 );
 
 const ResetPasswordPage = () => {
-    const form = useAppForm({
-        defaultValues: { password: "", confirmPassword: "" },
-        validators: {
-            onChange: resetPasswordSchema,
-            onSubmit: resetPasswordSchema,
-        },
-    });
+    const { token } = Route.useSearch();
+    const { error, form } = useResetPasswordForm(token);
 
     return (
         <AuthCard
@@ -91,6 +87,14 @@ const ResetPasswordPage = () => {
                             />
                         )}
                     </form.AppField>
+                    {token ? null : (
+                        <p className="text-destructive text-sm">
+                            Open the reset link from your email to continue.
+                        </p>
+                    )}
+                    {error ? (
+                        <p className="text-destructive text-sm">{error}</p>
+                    ) : null}
                     <Button className="w-full" size="lg" type="submit">
                         Update password
                     </Button>
@@ -101,6 +105,7 @@ const ResetPasswordPage = () => {
 };
 
 export const Route = createFileRoute("/auth/reset-password")({
+    validateSearch: v.object({ token: v.optional(v.string()) }),
     head: () => ({
         meta: [
             { title: "Reset password · Badag" },

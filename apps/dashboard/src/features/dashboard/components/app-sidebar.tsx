@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { Link as LinkIcon, LogOutIcon } from "lucide-react";
+import { Link as LinkIcon } from "lucide-react";
 
 import { BrandMark } from "@/components/brand";
 import {
@@ -17,7 +17,7 @@ import {
 import { navigation } from "@/features/dashboard/navigation";
 import { DOCS_URL } from "@/lib/site";
 
-export const AppSidebar = () => (
+export const AppSidebar = ({ isAdmin }: { isAdmin: boolean }) => (
     <Sidebar collapsible="icon">
         <SidebarHeader>
             <SidebarMenu>
@@ -38,17 +38,19 @@ export const AppSidebar = () => (
             <SidebarGroup>
                 <SidebarGroupContent>
                     <SidebarMenu>
-                        {navigation.map((item) => (
-                            <SidebarMenuItem key={item.title}>
-                                <SidebarMenuButton
-                                    render={<Link to={item.to} />}
-                                    tooltip={item.title}
-                                >
-                                    <item.icon />
-                                    <span>{item.title}</span>
-                                </SidebarMenuButton>
-                            </SidebarMenuItem>
-                        ))}
+                        {navigation
+                            .filter((item) => !item.adminOnly || isAdmin)
+                            .map((item) => (
+                                <SidebarMenuItem key={item.title}>
+                                    <SidebarMenuButton
+                                        render={<Link to={item.to} />}
+                                        tooltip={item.title}
+                                    >
+                                        <item.icon />
+                                        <span>{item.title}</span>
+                                    </SidebarMenuButton>
+                                </SidebarMenuItem>
+                            ))}
                     </SidebarMenu>
                 </SidebarGroupContent>
             </SidebarGroup>
@@ -69,15 +71,6 @@ export const AppSidebar = () => (
                     >
                         <LinkIcon />
                         <span>Docs</span>
-                    </SidebarMenuButton>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                    <SidebarMenuButton
-                        render={<Link to="/auth/sign-in" />}
-                        tooltip="Sign out"
-                    >
-                        <LogOutIcon />
-                        <span>Sign out</span>
                     </SidebarMenuButton>
                 </SidebarMenuItem>
             </SidebarMenu>

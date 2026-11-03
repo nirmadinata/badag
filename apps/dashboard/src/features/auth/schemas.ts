@@ -81,3 +81,23 @@ export const setupSchema = v.object({
     email: emailSchema,
     password: passwordSchema,
 });
+
+export const changePasswordSchema = v.pipe(
+    v.object({
+        currentPassword: currentPasswordSchema,
+        password: passwordSchema,
+        confirmPassword: confirmPasswordSchema,
+    }),
+    v.forward(
+        v.partialCheck(
+            [["password"], ["confirmPassword"]],
+            (input) => input.password === input.confirmPassword,
+            "Passwords do not match."
+        ),
+        ["confirmPassword"]
+    )
+);
+
+export const profileSchema = v.object({
+    fullName: nameSchema,
+});

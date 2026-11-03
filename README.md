@@ -134,7 +134,6 @@ The same graph can be validated in CI, stored as JSON, rendered in an admin UI, 
 | `packages/core` | DAG builder, task factories, audit rules, hashing, serialization |
 | `packages/sdk` | Public `@badag/sdk` package; bundles core for publishing |
 | `packages/db-schema` | Drizzle schemas for the app |
-| `apps/app` | Hono API on Cloudflare Workers |
 | `apps/dashboard` | TanStack Start dashboard on Cloudflare Workers |
 | `docs/adr` | Architecture decision records |
 

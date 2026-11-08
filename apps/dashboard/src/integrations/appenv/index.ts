@@ -4,7 +4,7 @@ import * as v from "valibot";
 // One schema for both environments: Worker secrets arrive through
 // `process.env` (nodejs_compat), client values through Vite's
 // `import.meta.env`. Server keys are never validated on the client.
-export const env = createEnv({
+export const appenv = createEnv({
     server: {
         BETTER_AUTH_SECRET: v.pipe(
             v.string(),

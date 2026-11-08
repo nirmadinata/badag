@@ -5,18 +5,18 @@ import { APIError, createAuthMiddleware } from "better-auth/api";
 import { admin } from "better-auth/plugins/admin";
 import { tanstackStartCookies } from "better-auth/tanstack-start";
 
+import { appenv } from "#/integrations/appenv/index.ts";
 import { db } from "@/integrations/db/client";
-import { env } from "@/integrations/env/env";
 
 const SIGN_UP_PATH = "/sign-up/email";
 const ADMIN_ROLE = "admin";
 
 export const auth = betterAuth({
     appName: "Badag",
-    baseURL: env.BETTER_AUTH_URL,
-    secret: env.BETTER_AUTH_SECRET,
+    baseURL: appenv.BETTER_AUTH_URL,
+    secret: appenv.BETTER_AUTH_SECRET,
     database: drizzleAdapter(db, { provider: "sqlite", schema }),
-    trustedOrigins: [env.BETTER_AUTH_URL],
+    trustedOrigins: [appenv.BETTER_AUTH_URL],
     emailAndPassword: {
         enabled: true,
         minPasswordLength: 8,

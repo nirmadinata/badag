@@ -1,4 +1,6 @@
-import { Toast as ToastPrimitive } from "@base-ui/react/toast";
+// oxlint-disable shadcn/no-restyle
+
+import type { Toast as ToastPrimitive } from "@base-ui/react/toast";
 import {
     CircleCheckIcon,
     InfoIcon,
@@ -35,18 +37,31 @@ const typeFrame = cn(
 
 const ToastTypeIcon = ({ type }: { type: string | undefined }) => {
     switch (type) {
-        case "success":
+        case "success": {
             return <CircleCheckIcon className="text-success" />;
-        case "warning":
+        }
+
+        case "warning": {
             return <TriangleAlertIcon className="text-warning" />;
-        case "error":
+        }
+
+        case "error": {
             return <OctagonXIcon className="text-destructive" />;
-        case "info":
+        }
+
+        case "info": {
             return <InfoIcon className="text-muted-foreground" />;
-        case "loading":
-            return <Loader2Icon className="text-muted-foreground animate-spin" />;
-        default:
+        }
+
+        case "loading": {
+            return (
+                <Loader2Icon className="text-muted-foreground animate-spin" />
+            );
+        }
+
+        default: {
             return null;
+        }
     }
 };
 
@@ -54,11 +69,7 @@ const ToastList = () => {
     const { toasts } = useToastManager();
 
     return toasts.map((toastItem) => (
-        <Toast
-            className={typeFrame}
-            key={toastItem.id}
-            toast={toastItem}
-        >
+        <Toast className={typeFrame} key={toastItem.id} toast={toastItem}>
             <ToastContent>
                 <span
                     className="shrink-0 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4"

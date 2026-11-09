@@ -124,6 +124,7 @@ The same graph can be validated in CI, stored as JSON, rendered in an admin UI, 
 
 - [`packages/core/README.md`](packages/core/README.md) — full API: task kinds, wiring, validation, serialization, and errors.
 - [`packages/sdk/README.md`](packages/sdk/README.md) — the public `@badag/sdk` entry point.
+- [`apps/dashboard/README.md`](apps/dashboard/README.md) — running, developing, and deploying the dashboard.
 - [`GLOSSARY.md`](GLOSSARY.md) — the language used across the codebase.
 - [`docs/adr/`](docs/adr) — architecture decision records.
 

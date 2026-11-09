@@ -39,7 +39,11 @@ export const AppSidebar = ({ isAdmin }: { isAdmin: boolean }) => (
                 <SidebarGroupContent>
                     <SidebarMenu>
                         {navigation
-                            .filter((item) => !item.adminOnly || isAdmin)
+                            .filter(
+                                (item) =>
+                                    !item.commandOnly &&
+                                    (!item.adminOnly || isAdmin)
+                            )
                             .map((item) => (
                                 <SidebarMenuItem key={item.title}>
                                     <SidebarMenuButton

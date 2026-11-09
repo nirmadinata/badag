@@ -12,6 +12,7 @@ import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
 import { Toaster } from "@/components/toaster";
 import { getAuthState } from "@/integrations/better-auth/session";
 import TanStackQueryDevtools from "@/integrations/tanstack-query/devtools";
+import { themeInitScript } from "@/lib/theme";
 
 import appCss from "@/styles.css?url";
 
@@ -20,7 +21,10 @@ interface RouterContext {
 }
 
 const RootDocument = ({ children }: { children: React.ReactNode }) => (
-    <html lang="en">
+    // The theme head script sets `class="dark"` and `style.color-scheme`
+    // before hydration. Those attributes are intentionally outside React's
+    // control, so attribute-level mismatch suppression is required here.
+    <html lang="en" suppressHydrationWarning>
         <head>
             <HeadContent />
         </head>
@@ -81,6 +85,8 @@ export const Route = createRootRouteWithContext<RouterContext>()({
             { title: "Badag" },
         ],
         links: [{ rel: "stylesheet", href: appCss }],
+        // Applied inside <head> so the stored theme wins before first paint.
+        scripts: [{ children: themeInitScript }],
     }),
     shellComponent: RootDocument,
     notFoundComponent: NotFound,

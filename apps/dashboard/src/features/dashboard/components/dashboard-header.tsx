@@ -6,6 +6,7 @@ import {
     UserIcon,
 } from "lucide-react";
 
+import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
 import {
     DropdownMenu,
@@ -49,6 +50,7 @@ export const DashboardHeader = ({
                     <span className="hidden sm:inline">Search</span>
                     <Kbd className="hidden sm:inline-flex">⌘K</Kbd>
                 </Button>
+                <ThemeToggle />
                 <DropdownMenu>
                     <DropdownMenuTrigger
                         render={

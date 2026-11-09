@@ -60,6 +60,7 @@ Run `bun db:clean-generate` only when the schema is unreleased, then `bun db:mig
 | `src/integrations/hono/` | Public `/api/v1` app: OpenAPI routes, schemas, and the API-key guard |
 | `src/integrations/exports/` | Durable Object and Workflow classes re-exported by the Worker entry |
 | `src/integrations/tanstack-query/` | Query client context and SSR bridging |
+| `src/lib/theme.ts` | Light/dark preference: storage, document class, and the pre-paint head script |
 | `src/components/ui/` | shadcn (Base UI) primitives; configured in `components.json` |
 | `src/server.ts` | Worker entry: TanStack Start handler plus the named exports |
 | `cloudflare.config.ts` | Worker name, compatibility flags, bindings, and exports |

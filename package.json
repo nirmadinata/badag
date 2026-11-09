@@ -10,6 +10,7 @@
     "scripts": {
         "build": "turbo run build",
         "test": "turbo run test",
+        "test:e2e": "turbo run test:e2e",
         "typecheck": "bun check",
         "check": "ultracite check",
         "fix": "ultracite fix",

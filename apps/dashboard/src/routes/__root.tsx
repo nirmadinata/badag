@@ -9,6 +9,7 @@ import {
 } from "@tanstack/react-router";
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
 
+import { Toaster } from "@/components/toaster";
 import { getAuthState } from "@/integrations/better-auth/session";
 import TanStackQueryDevtools from "@/integrations/tanstack-query/devtools";
 
@@ -24,7 +25,7 @@ const RootDocument = ({ children }: { children: React.ReactNode }) => (
             <HeadContent />
         </head>
         <body>
-            {children}
+            <Toaster>{children}</Toaster>
             {import.meta.env.DEV ? (
                 <TanStackDevtools
                     config={{ position: "bottom-right" }}

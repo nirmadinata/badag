@@ -23,7 +23,7 @@ export const CreateUserDialog = ({
     onOpenChange,
     onCreated,
 }: CreateUserDialogProps) => {
-    const { error, form, isAdmin, setIsAdmin } = useCreateUserForm({
+    const { form, isAdmin, setIsAdmin } = useCreateUserForm({
         onCreated,
         onOpenChange,
     });
@@ -86,9 +86,6 @@ export const CreateUserDialog = ({
                                 Grant administrator access
                             </Label>
                         </div>
-                        {error ? (
-                            <p className="text-destructive text-sm">{error}</p>
-                        ) : null}
                         <DialogFooter>
                             <Button
                                 onClick={() => onOpenChange(false)}

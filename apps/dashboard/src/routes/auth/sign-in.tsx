@@ -8,7 +8,7 @@ import { AuthCard } from "@/features/auth/components/auth-card";
 import { useSignInForm } from "@/features/auth/hooks/use-sign-in-form";
 
 const SignInPage = () => {
-    const { error, form, remember, setRemember } = useSignInForm();
+    const { form, remember, setRemember } = useSignInForm();
 
     return (
         <AuthCard
@@ -61,9 +61,6 @@ const SignInPage = () => {
                             Forgot password?
                         </Link>
                     </div>
-                    {error ? (
-                        <p className="text-destructive text-sm">{error}</p>
-                    ) : null}
                     <Button className="w-full" size="lg" type="submit">
                         Sign in
                     </Button>

@@ -1,6 +1,7 @@
 import { useRouter, useRouterState } from "@tanstack/react-router";
 
 import { authClient } from "@/integrations/better-auth/client";
+import { toast } from "@/lib/toast";
 
 import { navigation } from "../navigation";
 
@@ -15,7 +16,17 @@ export const useDashboardHeader = () => {
         navigation.find((item) => item.to === pathname)?.title ?? "Dashboard";
 
     const signOut = async () => {
-        await authClient.signOut();
+        const { error } = await authClient.signOut();
+
+        if (error) {
+            toast.error({
+                title: "Could not sign out",
+                description: error.message,
+            });
+
+            return;
+        }
+
         await navigate({ to: "/auth/sign-in" });
     };
 

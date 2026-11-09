@@ -14,7 +14,7 @@ interface ProfileUser {
 }
 
 const ProfileDetailsForm = ({ user }: { user: ProfileUser }) => {
-    const { error, form, notice } = useProfileDetailsForm(user.name);
+    const { form } = useProfileDetailsForm(user.name);
 
     return (
         <form
@@ -36,14 +36,6 @@ const ProfileDetailsForm = ({ user }: { user: ProfileUser }) => {
                         />
                     )}
                 </form.AppField>
-                {error ? (
-                    <p className="text-destructive text-sm" role="alert">
-                        {error}
-                    </p>
-                ) : null}
-                {notice ? (
-                    <output className="text-success text-sm">{notice}</output>
-                ) : null}
                 <Button className="w-full" type="submit" variant="outline">
                     Save changes
                 </Button>
@@ -53,7 +45,7 @@ const ProfileDetailsForm = ({ user }: { user: ProfileUser }) => {
 };
 
 const ChangePasswordForm = () => {
-    const { error, form, notice } = useChangePasswordForm();
+    const { form } = useChangePasswordForm();
 
     return (
         <section
@@ -104,16 +96,6 @@ const ChangePasswordForm = () => {
                             />
                         )}
                     </form.AppField>
-                    {error ? (
-                        <p className="text-destructive text-sm" role="alert">
-                            {error}
-                        </p>
-                    ) : null}
-                    {notice ? (
-                        <output className="text-success text-sm">
-                            {notice}
-                        </output>
-                    ) : null}
                     <Button className="w-full" type="submit">
                         Update password
                     </Button>

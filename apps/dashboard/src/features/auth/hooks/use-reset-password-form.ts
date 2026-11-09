@@ -1,14 +1,13 @@
 import { useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
 
 import { authClient } from "@/integrations/better-auth/client";
+import { toast } from "@/lib/toast";
 
 import { useAppForm } from "../form";
 import { resetPasswordSchema } from "../schemas";
 
 export const useResetPasswordForm = (token: string | undefined) => {
     const navigate = useNavigate();
-    const [error, setError] = useState<string>();
 
     const form = useAppForm({
         defaultValues: { password: "", confirmPassword: "" },
@@ -18,12 +17,14 @@ export const useResetPasswordForm = (token: string | undefined) => {
         },
         onSubmit: async ({ value }) => {
             if (!token) {
-                setError("This reset link is missing its token.");
+                toast.error({
+                    title: "Reset link is incomplete",
+                    description:
+                        "Open the reset link from your email to continue.",
+                });
 
                 return;
             }
-
-            setError(undefined);
 
             const { error: resetError } = await authClient.resetPassword({
                 newPassword: value.password,
@@ -31,14 +32,21 @@ export const useResetPasswordForm = (token: string | undefined) => {
             });
 
             if (resetError) {
-                setError(resetError.message ?? "Could not reset the password.");
+                toast.error({
+                    title: "Could not reset the password",
+                    description: resetError.message,
+                });
 
                 return;
             }
 
             await navigate({ to: "/auth/sign-in" });
+            toast.success({
+                title: "Password updated",
+                description: "Sign in with your new password.",
+            });
         },
     });
 
-    return { error, form };
+    return { form };
 };

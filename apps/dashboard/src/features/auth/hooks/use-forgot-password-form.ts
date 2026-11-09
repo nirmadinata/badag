@@ -1,14 +1,10 @@
-import { useState } from "react";
-
 import { authClient } from "@/integrations/better-auth/client";
+import { toast } from "@/lib/toast";
 
 import { useAppForm } from "../form";
 import { forgotPasswordSchema } from "../schemas";
 
 export const useForgotPasswordForm = () => {
-    const [sent, setSent] = useState(false);
-    const [error, setError] = useState<string>();
-
     const form = useAppForm({
         defaultValues: { email: "" },
         validators: {
@@ -16,8 +12,6 @@ export const useForgotPasswordForm = () => {
             onSubmit: forgotPasswordSchema,
         },
         onSubmit: async ({ value }) => {
-            setError(undefined);
-
             const { error: requestError } =
                 await authClient.requestPasswordReset({
                     email: value.email,
@@ -25,17 +19,21 @@ export const useForgotPasswordForm = () => {
                 });
 
             if (requestError) {
-                setError(
-                    requestError.message ??
-                        "Could not send the reset instructions."
-                );
+                toast.error({
+                    title: "Could not send the reset instructions",
+                    description: requestError.message,
+                });
 
                 return;
             }
 
-            setSent(true);
+            toast.success({
+                title: "Reset instructions sent",
+                description:
+                    "If that email matches an account, the link is on its way.",
+            });
         },
     });
 
-    return { error, form, sent };
+    return { form };
 };

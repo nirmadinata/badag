@@ -7,7 +7,7 @@ import { AuthCard } from "@/features/auth/components/auth-card";
 import { useForgotPasswordForm } from "@/features/auth/hooks/use-forgot-password-form";
 
 const ForgotPasswordPage = () => {
-    const { error, form, sent } = useForgotPasswordForm();
+    const { form } = useForgotPasswordForm();
 
     return (
         <AuthCard
@@ -44,15 +44,6 @@ const ForgotPasswordPage = () => {
                             />
                         )}
                     </form.AppField>
-                    {sent ? (
-                        <p className="text-muted-foreground text-sm">
-                            If that email matches an account, reset instructions
-                            are on their way.
-                        </p>
-                    ) : null}
-                    {error ? (
-                        <p className="text-destructive text-sm">{error}</p>
-                    ) : null}
                     <Button className="w-full" size="lg" type="submit">
                         Send reset link
                     </Button>

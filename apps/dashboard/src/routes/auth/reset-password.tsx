@@ -41,7 +41,7 @@ const PasswordRules = ({ password }: { password: string }) => (
 
 const ResetPasswordPage = () => {
     const { token } = Route.useSearch();
-    const { error, form } = useResetPasswordForm(token);
+    const { form } = useResetPasswordForm(token);
 
     return (
         <AuthCard
@@ -92,9 +92,6 @@ const ResetPasswordPage = () => {
                             Open the reset link from your email to continue.
                         </p>
                     )}
-                    {error ? (
-                        <p className="text-destructive text-sm">{error}</p>
-                    ) : null}
                     <Button className="w-full" size="lg" type="submit">
                         Update password
                     </Button>

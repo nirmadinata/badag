@@ -1,14 +1,10 @@
-import { useState } from "react";
-
 import { authClient } from "@/integrations/better-auth/client";
+import { toast } from "@/lib/toast";
 
 import { useAppForm } from "../form";
 import { changePasswordSchema } from "../schemas";
 
 export const useChangePasswordForm = () => {
-    const [error, setError] = useState<string>();
-    const [notice, setNotice] = useState<string>();
-
     const form = useAppForm({
         defaultValues: {
             currentPassword: "",
@@ -20,9 +16,6 @@ export const useChangePasswordForm = () => {
             onSubmit: changePasswordSchema,
         },
         onSubmit: async ({ value }) => {
-            setError(undefined);
-            setNotice(undefined);
-
             const { error: changeError } = await authClient.changePassword({
                 currentPassword: value.currentPassword,
                 newPassword: value.password,
@@ -30,17 +23,21 @@ export const useChangePasswordForm = () => {
             });
 
             if (changeError) {
-                setError(
-                    changeError.message ?? "Could not update your password."
-                );
+                toast.error({
+                    title: "Could not update the password",
+                    description: changeError.message,
+                });
 
                 return;
             }
 
             form.reset();
-            setNotice("Password updated. Other sessions were signed out.");
+            toast.success({
+                title: "Password updated",
+                description: "Other sessions were signed out.",
+            });
         },
     });
 
-    return { error, form, notice };
+    return { form };
 };

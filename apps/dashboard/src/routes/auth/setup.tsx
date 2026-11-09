@@ -7,7 +7,7 @@ import { AuthCard } from "@/features/auth/components/auth-card";
 import { useSetupForm } from "@/features/auth/hooks/use-setup-form";
 
 const SetupPage: React.FC = () => {
-    const { error, form } = useSetupForm();
+    const { form } = useSetupForm();
 
     return (
         <AuthCard
@@ -64,9 +64,6 @@ const SetupPage: React.FC = () => {
                             />
                         )}
                     </form.AppField>
-                    {error ? (
-                        <p className="text-destructive text-sm">{error}</p>
-                    ) : null}
                     <Button className="w-full" size="lg" type="submit">
                         Create account
                     </Button>

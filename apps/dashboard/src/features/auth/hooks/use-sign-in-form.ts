@@ -2,6 +2,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 
 import { authClient } from "@/integrations/better-auth/client";
+import { toast } from "@/lib/toast";
 
 import { useAppForm } from "../form";
 import { signInSchema } from "../schemas";
@@ -9,14 +10,11 @@ import { signInSchema } from "../schemas";
 export const useSignInForm = () => {
     const navigate = useNavigate();
     const [remember, setRemember] = useState(true);
-    const [error, setError] = useState<string>();
 
     const form = useAppForm({
         defaultValues: { email: "", password: "" },
         validators: { onChange: signInSchema, onSubmit: signInSchema },
         onSubmit: async ({ value }) => {
-            setError(undefined);
-
             const { error: signInError } = await authClient.signIn.email({
                 email: value.email,
                 password: value.password,
@@ -24,14 +22,19 @@ export const useSignInForm = () => {
             });
 
             if (signInError) {
-                setError(signInError.message ?? "Could not sign in.");
+                toast.error({
+                    title: "Could not sign in",
+                    description:
+                        signInError.message ?? "Check your email and password.",
+                });
 
                 return;
             }
 
             await navigate({ to: "/dashboard" });
+            toast.success({ title: "Signed in" });
         },
     });
 
-    return { error, form, remember, setRemember };
+    return { form, remember, setRemember };
 };

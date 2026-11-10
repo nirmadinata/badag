@@ -82,17 +82,18 @@ export const LIST_DAG_RUN_TRIGGER = [
     ENUM_DAG_RUN_TRIGGER.Event,
 ] as const;
 
-// Account roles. `admin` manages users; `user` is the default for new accounts.
+// Account roles. The first account created during setup is the `superadmin`;
+// later accounts default to `admin`. Both currently carry the same privileges.
 export const ENUM_USER_ROLE = {
+    Superadmin: "superadmin",
     Admin: "admin",
-    User: "user",
 } as const;
 
 export type UserRole = (typeof ENUM_USER_ROLE)[keyof typeof ENUM_USER_ROLE];
 
 export const LIST_USER_ROLE = [
+    ENUM_USER_ROLE.Superadmin,
     ENUM_USER_ROLE.Admin,
-    ENUM_USER_ROLE.User,
 ] as const;
 
-export const DEFAULT_USER_ROLE = ENUM_USER_ROLE.User as UserRole;
+export const DEFAULT_USER_ROLE = ENUM_USER_ROLE.Admin as UserRole;

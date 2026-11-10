@@ -23,7 +23,7 @@ export const CreateUserDialog = ({
     onOpenChange,
     onCreated,
 }: CreateUserDialogProps) => {
-    const { form, isAdmin, setIsAdmin } = useCreateUserForm({
+    const { form, isSuperadmin, setIsSuperadmin } = useCreateUserForm({
         onCreated,
         onOpenChange,
     });
@@ -76,14 +76,14 @@ export const CreateUserDialog = ({
                         </form.AppField>
                         <div className="flex items-center gap-2">
                             <Checkbox
-                                checked={isAdmin}
-                                id="create-user-admin"
+                                checked={isSuperadmin}
+                                id="create-user-superadmin"
                                 onCheckedChange={(checked) =>
-                                    setIsAdmin(checked === true)
+                                    setIsSuperadmin(checked === true)
                                 }
                             />
-                            <Label htmlFor="create-user-admin">
-                                Grant administrator access
+                            <Label htmlFor="create-user-superadmin">
+                                Grant superadmin access
                             </Label>
                         </div>
                         <DialogFooter>

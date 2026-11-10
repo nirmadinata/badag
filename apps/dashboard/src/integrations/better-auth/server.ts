@@ -1,4 +1,4 @@
-import { schema } from "@badag/db-schema/main-db";
+import { constants, schema } from "@badag/db-schema/main-db";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { APIError, createAuthMiddleware } from "better-auth/api";
@@ -6,16 +6,16 @@ import { admin } from "better-auth/plugins/admin";
 import { tanstackStartCookies } from "better-auth/tanstack-start";
 
 import { appenv } from "#/integrations/appenv/index.ts";
+import { accessControl, ROLES } from "@/integrations/better-auth/roles";
 import { db } from "@/integrations/db/client";
 
 const SIGN_UP_PATH = "/sign-up/email";
-const ADMIN_ROLE = "admin";
 
 export const auth = betterAuth({
     appName: "Badag",
     baseURL: appenv.BETTER_AUTH_URL,
     secret: appenv.BETTER_AUTH_SECRET,
-    database: drizzleAdapter(db, { provider: "sqlite", schema }),
+    database: drizzleAdapter(db, { schema, provider: "sqlite" }),
     trustedOrigins: [appenv.BETTER_AUTH_URL],
     emailAndPassword: {
         enabled: true,
@@ -63,9 +63,14 @@ export const auth = betterAuth({
                         model: "user",
                     });
 
-                    // The first account is the administrator.
+                    // The first account owns the instance.
                     if (users === 0) {
-                        return { data: { ...user, role: ADMIN_ROLE } };
+                        return {
+                            data: {
+                                ...user,
+                                role: constants.ENUM_USER_ROLE.Superadmin,
+                            },
+                        };
                     }
                 },
             },
@@ -82,7 +87,12 @@ export const auth = betterAuth({
         },
     },
     plugins: [
-        admin({ defaultRole: "user", adminRoles: [ADMIN_ROLE] }),
+        admin({
+            ac: accessControl,
+            roles: ROLES,
+            defaultRole: constants.DEFAULT_USER_ROLE,
+            adminRoles: [...constants.LIST_USER_ROLE],
+        }),
         // Must stay last: hands cookie writes to TanStack Start.
         tanstackStartCookies(),
     ],

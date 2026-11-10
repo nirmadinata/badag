@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "c71f3ea0-38fd-4754-9158-c5152e858b24",
+  "id": "fd218380-a02d-4e3e-801e-c7aa70640f18",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "dag_edges": {
@@ -746,7 +746,7 @@
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false,
-          "default": "'user'"
+          "default": "'admin'"
         },
         "banned": {
           "name": "banned",

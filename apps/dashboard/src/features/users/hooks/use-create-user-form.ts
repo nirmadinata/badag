@@ -1,3 +1,4 @@
+import { constants } from "@badag/db-schema/main-db";
 import { useState } from "react";
 
 import { useAppForm } from "@/features/auth/form";
@@ -14,7 +15,7 @@ export const useCreateUserForm = ({
     onCreated,
     onOpenChange,
 }: UseCreateUserFormOptions) => {
-    const [isAdmin, setIsAdmin] = useState(false);
+    const [isSuperadmin, setIsSuperadmin] = useState(false);
 
     const form = useAppForm({
         defaultValues: { fullName: "", email: "", password: "" },
@@ -24,7 +25,9 @@ export const useCreateUserForm = ({
                 email: value.email,
                 name: value.fullName,
                 password: value.password,
-                role: isAdmin ? "admin" : "user",
+                role: isSuperadmin
+                    ? constants.ENUM_USER_ROLE.Superadmin
+                    : constants.DEFAULT_USER_ROLE,
             });
 
             if (createError) {
@@ -37,7 +40,7 @@ export const useCreateUserForm = ({
             }
 
             form.reset();
-            setIsAdmin(false);
+            setIsSuperadmin(false);
             onOpenChange(false);
             onCreated();
             toast.success({
@@ -47,5 +50,5 @@ export const useCreateUserForm = ({
         },
     });
 
-    return { form, isAdmin, setIsAdmin };
+    return { form, isSuperadmin, setIsSuperadmin };
 };

@@ -5,6 +5,7 @@ import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/features/dashboard/components/app-sidebar";
 import { CommandMenu } from "@/features/dashboard/components/command-menu";
 import { DashboardHeader } from "@/features/dashboard/components/dashboard-header";
+import { isAdminRole } from "@/integrations/better-auth/roles";
 
 const DashboardLayout = () => {
     const { user } = Route.useRouteContext();
@@ -28,7 +29,7 @@ const DashboardLayout = () => {
 
     return (
         <SidebarProvider>
-            <AppSidebar isAdmin={user.role === "admin"} />
+            <AppSidebar isAdmin={isAdminRole(user.role)} />
             <SidebarInset>
                 <DashboardHeader
                     onOpenCommand={() => setCommandOpen(true)}
@@ -39,7 +40,7 @@ const DashboardLayout = () => {
                 </div>
             </SidebarInset>
             <CommandMenu
-                isAdmin={user.role === "admin"}
+                isAdmin={isAdminRole(user.role)}
                 onOpenChange={setCommandOpen}
                 open={commandOpen}
             />

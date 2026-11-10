@@ -13,12 +13,15 @@ import {
     TableRow,
 } from "@/components/ui/table";
 import { CreateUserDialog } from "@/features/users/components/create-user-dialog";
+import { UserActions } from "@/features/users/components/user-actions";
+import { isAdminRole } from "@/integrations/better-auth/roles";
 import { listUsers } from "@/integrations/better-auth/session";
 
 const dateFormatter = new Intl.DateTimeFormat("en", { dateStyle: "medium" });
 
 const UsersPage = () => {
     const users = Route.useLoaderData();
+    const { user: currentUser } = Route.useRouteContext();
     const router = useRouter();
     const [createOpen, setCreateOpen] = useState(false);
 
@@ -49,6 +52,9 @@ const UsersPage = () => {
                             <TableHead className="text-right">
                                 Created
                             </TableHead>
+                            <TableHead className="w-10">
+                                <span className="sr-only">Actions</span>
+                            </TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -59,7 +65,7 @@ const UsersPage = () => {
                                 <TableCell>
                                     <Badge
                                         variant={
-                                            user.role === "admin"
+                                            isAdminRole(user.role)
                                                 ? "default"
                                                 : "secondary"
                                         }
@@ -74,6 +80,13 @@ const UsersPage = () => {
                                     {dateFormatter.format(
                                         new Date(user.createdAt)
                                     )}
+                                </TableCell>
+                                <TableCell>
+                                    <UserActions
+                                        isSelf={currentUser.id === user.id}
+                                        onChanged={() => router.invalidate()}
+                                        user={user}
+                                    />
                                 </TableCell>
                             </TableRow>
                         ))}
@@ -91,7 +104,7 @@ const UsersPage = () => {
 
 export const Route = createFileRoute("/dashboard/users")({
     beforeLoad: ({ context }) => {
-        if (context.user.role !== "admin") {
+        if (!isAdminRole(context.user.role)) {
             throw redirect({ to: "/dashboard" });
         }
     },

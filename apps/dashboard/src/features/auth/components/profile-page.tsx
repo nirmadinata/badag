@@ -1,7 +1,10 @@
+import { constants } from "@badag/db-schema/main-db";
+
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { FieldGroup } from "@/components/ui/field";
 import { UserAvatar } from "@/components/user-avatar";
+import { isAdminRole } from "@/integrations/better-auth/roles";
 
 import { useChangePasswordForm } from "../hooks/use-change-password-form";
 import { useProfileDetailsForm } from "../hooks/use-profile-details-form";
@@ -106,7 +109,7 @@ const ChangePasswordForm = () => {
 };
 
 export const ProfilePage = ({ user }: { user: ProfileUser }) => {
-    const role = user.role ?? "user";
+    const role = user.role ?? constants.DEFAULT_USER_ROLE;
 
     return (
         <div className="flex flex-col gap-6">
@@ -142,7 +145,7 @@ export const ProfilePage = ({ user }: { user: ProfileUser }) => {
                             <Badge
                                 className="mt-2"
                                 variant={
-                                    role === "admin" ? "default" : "secondary"
+                                    isAdminRole(role) ? "default" : "secondary"
                                 }
                             >
                                 {role.charAt(0).toUpperCase() + role.slice(1)}

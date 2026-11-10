@@ -103,7 +103,7 @@ CREATE TABLE `user` (
 	`email` text NOT NULL,
 	`email_verified` integer DEFAULT false NOT NULL,
 	`image` text,
-	`role` text DEFAULT 'user' NOT NULL,
+	`role` text DEFAULT 'admin' NOT NULL,
 	`banned` integer DEFAULT false NOT NULL,
 	`ban_reason` text,
 	`ban_expires` integer,

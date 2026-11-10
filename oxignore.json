@@ -3,6 +3,9 @@
     "**/.cloudflare/**",
     "**/migrations/**",
     "**/components/ui/**",
+    "**/hooks/use-highlighted-code.ts",
+    "**/hooks/use-mobile.ts",
+    "**/lib/highlighter.tsx",
     "**/routeTree.gen.ts",
     "**/skills-lock.json"
 ]

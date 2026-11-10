@@ -4,17 +4,10 @@ import { ArrowLeftIcon, MailIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FieldGroup } from "@/components/ui/field";
 import { AuthCard } from "@/features/auth/components/auth-card";
-import { useAppForm } from "@/features/auth/form";
-import { forgotPasswordSchema } from "@/features/auth/schemas";
+import { useForgotPasswordForm } from "@/features/auth/hooks/use-forgot-password-form";
 
 const ForgotPasswordPage = () => {
-    const form = useAppForm({
-        defaultValues: { email: "" },
-        validators: {
-            onChange: forgotPasswordSchema,
-            onSubmit: forgotPasswordSchema,
-        },
-    });
+    const { form } = useForgotPasswordForm();
 
     return (
         <AuthCard

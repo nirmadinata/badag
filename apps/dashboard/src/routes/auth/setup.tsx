@@ -1,17 +1,13 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { InfoIcon, UserPlusIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { FieldGroup } from "@/components/ui/field";
 import { AuthCard } from "@/features/auth/components/auth-card";
-import { useAppForm } from "@/features/auth/form";
-import { setupSchema } from "@/features/auth/schemas";
+import { useSetupForm } from "@/features/auth/hooks/use-setup-form";
 
-const SetupPage = () => {
-    const form = useAppForm({
-        defaultValues: { fullName: "", email: "", password: "" },
-        validators: { onChange: setupSchema, onSubmit: setupSchema },
-    });
+const SetupPage: React.FC = () => {
+    const { form } = useSetupForm();
 
     return (
         <AuthCard
@@ -89,6 +85,17 @@ const SetupPage = () => {
 };
 
 export const Route = createFileRoute("/auth/setup")({
+    beforeLoad: ({ context }) => {
+        const { setupRequired, user } = context.authState;
+
+        if (user) {
+            throw redirect({ to: "/dashboard" });
+        }
+
+        if (!setupRequired) {
+            throw redirect({ to: "/auth/sign-in" });
+        }
+    },
     head: () => ({
         meta: [
             { title: "Create your account · Badag" },

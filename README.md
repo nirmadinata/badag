@@ -124,6 +124,7 @@ The same graph can be validated in CI, stored as JSON, rendered in an admin UI, 
 
 - [`packages/core/README.md`](packages/core/README.md) — full API: task kinds, wiring, validation, serialization, and errors.
 - [`packages/sdk/README.md`](packages/sdk/README.md) — the public `@badag/sdk` entry point.
+- [`apps/dashboard/README.md`](apps/dashboard/README.md) — running, developing, and deploying the dashboard.
 - [`GLOSSARY.md`](GLOSSARY.md) — the language used across the codebase.
 - [`docs/adr/`](docs/adr) — architecture decision records.
 
@@ -134,7 +135,6 @@ The same graph can be validated in CI, stored as JSON, rendered in an admin UI, 
 | `packages/core` | DAG builder, task factories, audit rules, hashing, serialization |
 | `packages/sdk` | Public `@badag/sdk` package; bundles core for publishing |
 | `packages/db-schema` | Drizzle schemas for the app |
-| `apps/app` | Hono API on Cloudflare Workers |
 | `apps/dashboard` | TanStack Start dashboard on Cloudflare Workers |
 | `docs/adr` | Architecture decision records |
 
@@ -143,11 +143,16 @@ The same graph can be validated in CI, stored as JSON, rendered in an admin UI, 
 ```sh
 bun install
 bun run test
+bun run test:e2e
 bun run check
 bun run build
 ```
 
+`bun run test` runs the unit suites through Turbo; `bun run test:e2e` runs the dashboard's Playwright-backed end-to-end suite through Turbo (it boots a Vite dev server on `127.0.0.1:3100` via `e2e/global-setup.ts`).
+
 `bun run check` runs the Ultracite lint and format checks; `bun run fix` applies the fixes.
+
+Each Vitest run writes a JUnit report to `reports/` in its package (`reports/vitest-junit.xml`, `reports/vitest-e2e-junit.xml` for the dashboard e2e suite). Turbo caches that directory as the `test` task output, so a cache hit restores the reports without rerunning the suite. The `reports/` directories are gitignored.
 
 ## License
 

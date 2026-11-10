@@ -2,6 +2,7 @@ import { Link, useMatchRoute } from "@tanstack/react-router";
 
 import { Brand } from "@/components/brand";
 import { GithubIcon } from "@/components/icons";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { DOCS_URL, GITHUB_URL } from "@/lib/site";
 
@@ -17,6 +18,7 @@ export const SiteHeader = () => {
                     DAG SDK
                 </span>
                 <div className="ml-auto flex items-center gap-1">
+                    <ThemeToggle />
                     <Button
                         nativeButton={false}
                         render={

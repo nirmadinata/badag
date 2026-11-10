@@ -28,7 +28,7 @@ const firstError = (errors: readonly unknown[]): string | undefined =>
 
 type FieldChrome<T extends ElementType> = Omit<
     ComponentProps<T>,
-    "error" | "id" | "name" | "onBlur" | "onChange" | "value"
+    "error" | "id" | "name" | "onBlur" | "onValueChange" | "value"
 >;
 
 /**
@@ -51,8 +51,7 @@ const useFieldBinding = () => {
         id: field.name,
         name: field.name,
         onBlur: () => field.handleBlur(),
-        onChange: (event: { target: { value: string } }) =>
-            field.handleChange(event.target.value),
+        onValueChange: (value: string) => field.handleChange(value),
         value: field.state.value,
     };
 };

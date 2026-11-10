@@ -6,12 +6,19 @@
 // names under `exports`.
 
 import type { schema } from "@badag/db-schema/orchestrator-db";
-import { DurableObject, WorkflowEntrypoint } from "cloudflare:workers";
-import type { WorkflowEvent, WorkflowStep } from "cloudflare:workers";
+import {
+    createDynamicWorkflowEntrypoint,
+    wrapWorkflowBinding,
+} from "@cloudflare/dynamic-workflows";
+import { createWorker } from "@cloudflare/worker-bundler";
+import { DurableObject } from "cloudflare:workers";
+import type { WorkflowEntrypoint } from "cloudflare:workers";
 import { drizzle } from "drizzle-orm/durable-sqlite";
 import type { DrizzleSqliteDODatabase } from "drizzle-orm/durable-sqlite";
 
 import { migrateTaskOrchestratorDB } from "@/integrations/db/orchestrator";
+
+export { DynamicWorkflowBinding } from "@cloudflare/dynamic-workflows";
 
 const MIGRATED_KEY = "migrated";
 
@@ -47,14 +54,40 @@ export class TaskOrchestratorDO extends DurableObject<
     }
 }
 
-interface TaskRunnerWFPayload {
-    doName: string;
+async function fetchTenantCode(tenantId: string) {
+    return `${tenantId}`;
 }
 
-type Event = WorkflowEvent<TaskRunnerWFPayload>;
+export const DynamicWorkflow = createDynamicWorkflowEntrypoint<Env>(
+    async ({ env, metadata }) => {
+        const tenantId = String(metadata.tenantId);
 
-export class TaskRunnerWF extends WorkflowEntrypoint<Env, TaskRunnerWFPayload> {
-    async run(event: Readonly<Event>, step: WorkflowStep) {
-        return await step.do("read-payload", async () => event.payload);
+        const stub = env.LOADER.get(tenantId, async () => {
+            const { mainModule, modules } = await createWorker({
+                files: {
+                    "src/index.ts": await fetchTenantCode(tenantId),
+                    "package.json": JSON.stringify({}),
+                },
+            });
+
+            return {
+                modules,
+                mainModule,
+                compatibilityDate: "2026-11-01",
+
+                // The tenant sees this as a normal Workflow binding.
+                env: {
+                    WORKFLOWS: wrapWorkflowBinding({ tenantId }),
+                },
+            };
+        });
+
+        // SAFETY: just because
+        // oxlint-disable-next-line anti-slop/no-chained-type-assertions
+        const entrypoint = stub.getEntrypoint(
+            "TenantWorkflow"
+        ) as unknown as WorkflowEntrypoint<Env>;
+
+        return entrypoint;
     }
-}
+);

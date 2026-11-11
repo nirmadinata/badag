@@ -1,3 +1,4 @@
+/// <reference types="@tanstack/react-start" />
 import { createFileRoute } from "@tanstack/react-router";
 
 import { handlePublicApiRequest } from "@/integrations/hono/app";

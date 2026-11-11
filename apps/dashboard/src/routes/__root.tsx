@@ -5,12 +5,10 @@ import {
     Link,
     Scripts,
     createRootRouteWithContext,
-    redirect,
 } from "@tanstack/react-router";
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
 
 import { Toaster } from "@/components/toaster";
-import { getAuthState } from "@/integrations/better-auth/session";
 import TanStackQueryDevtools from "@/integrations/tanstack-query/devtools";
 import { themeInitScript } from "@/lib/theme";
 
@@ -53,28 +51,13 @@ const NotFound = () => (
         <p className="text-muted-foreground mt-2 text-sm">
             That page does not exist.
         </p>
-        <Link className="mt-6 inline-block text-sm underline" to="/dashboard">
+        <Link className="mt-6 inline-block text-sm underline" to="/">
             Back to dashboard
         </Link>
     </main>
 );
 
 export const Route = createRootRouteWithContext<RouterContext>()({
-    // Until the first account exists, every UI route funnels into setup. Auth
-    // API routes are excluded so sign-up itself can run.
-    beforeLoad: async ({ location }) => {
-        const authState = await getAuthState();
-
-        if (
-            authState.setupRequired &&
-            location.pathname !== "/auth/setup" &&
-            !location.pathname.startsWith("/api/")
-        ) {
-            throw redirect({ to: "/auth/setup" });
-        }
-
-        return { authState };
-    },
     head: () => ({
         meta: [
             { charSet: "utf-8" },

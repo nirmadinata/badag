@@ -17,15 +17,12 @@ import {
 import { navigation } from "@/features/dashboard/navigation";
 import { DOCS_URL } from "@/lib/site";
 
-export const AppSidebar = ({ isAdmin }: { isAdmin: boolean }) => (
+export const AppSidebar = () => (
     <Sidebar collapsible="icon">
         <SidebarHeader>
             <SidebarMenu>
                 <SidebarMenuItem>
-                    <SidebarMenuButton
-                        render={<Link to="/dashboard" />}
-                        size="lg"
-                    >
+                    <SidebarMenuButton render={<Link to="/" />} size="lg">
                         <BrandMark className="size-5" />
                         <span className="font-heading truncate text-sm font-semibold">
                             Badag
@@ -38,23 +35,17 @@ export const AppSidebar = ({ isAdmin }: { isAdmin: boolean }) => (
             <SidebarGroup>
                 <SidebarGroupContent>
                     <SidebarMenu>
-                        {navigation
-                            .filter(
-                                (item) =>
-                                    !item.commandOnly &&
-                                    (!item.adminOnly || isAdmin)
-                            )
-                            .map((item) => (
-                                <SidebarMenuItem key={item.title}>
-                                    <SidebarMenuButton
-                                        render={<Link to={item.to} />}
-                                        tooltip={item.title}
-                                    >
-                                        <item.icon />
-                                        <span>{item.title}</span>
-                                    </SidebarMenuButton>
-                                </SidebarMenuItem>
-                            ))}
+                        {navigation.map((item) => (
+                            <SidebarMenuItem key={item.title}>
+                                <SidebarMenuButton
+                                    render={<Link to={item.to} />}
+                                    tooltip={item.title}
+                                >
+                                    <item.icon />
+                                    <span>{item.title}</span>
+                                </SidebarMenuButton>
+                            </SidebarMenuItem>
+                        ))}
                     </SidebarMenu>
                 </SidebarGroupContent>
             </SidebarGroup>

@@ -93,8 +93,8 @@ interface ToasterProps extends ToastPrimitive.Provider.Props {
 }
 
 /**
- * Application toast host. Mounted once in the root document so every route,
- * including auth screens, shares one viewport and one manager.
+ * Application toast host. Mounted once in the root document so every route
+ * shares one viewport and one manager.
  */
 export const Toaster = ({
     children,

@@ -26,10 +26,9 @@ export const jsonResponse = <T extends ZodType>(
     description,
 });
 
-// Every domain route can reject unauthorised callers, invalid input, or
-// report an unimplemented handler.
+// Every domain route can reject invalid input or report an unimplemented
+// handler.
 export const errorResponses = {
-    401: jsonResponse(apiErrorSchema, "Missing or invalid API key."),
     422: jsonResponse(apiErrorSchema, "Invalid request."),
     501: jsonResponse(apiErrorSchema, "Not implemented."),
 } as const;

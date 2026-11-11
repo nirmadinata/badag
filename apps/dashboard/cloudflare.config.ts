@@ -20,10 +20,6 @@ export default defineConfig(({ mode }) => {
             compatibilityFlags: ["nodejs_compat"],
 
             env: {
-                // Secrets are read locally from `.env` (see `.env.example`) and must
-                // be set with `cf secret put <NAME>` before deploying.
-                BETTER_AUTH_SECRET: bindings.secret(),
-                BETTER_AUTH_URL: bindings.secret(),
                 MAIN_DB: bindings.d1({
                     id: MAIN_DB_ID,
                     dev: { remote: false },

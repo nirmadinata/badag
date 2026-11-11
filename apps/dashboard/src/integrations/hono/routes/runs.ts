@@ -1,7 +1,6 @@
 import { createRoute } from "@hono/zod-openapi";
 import type { OpenAPIHono } from "@hono/zod-openapi";
 
-import type { PublicApiEnv } from "../api-key";
 import {
     dagRunListSchema,
     dagRunSchema,
@@ -91,7 +90,7 @@ const cancelRunRoute = createRoute({
     },
 });
 
-export function registerRunRoutes(app: OpenAPIHono<PublicApiEnv>): void {
+export function registerRunRoutes(app: OpenAPIHono): void {
     app.openapi(listRunsRoute, notImplemented);
     app.openapi(getRunRoute, notImplemented);
     app.openapi(listTaskExecutionsRoute, notImplemented);

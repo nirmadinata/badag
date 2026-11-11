@@ -1,8 +1,6 @@
-import { Link } from "@tanstack/react-router";
-
 import { cn } from "@/lib/utils";
 
-const BrandMark = ({ className }: { className?: string }) => (
+export const BrandMark = ({ className }: { className?: string }) => (
     <svg
         aria-hidden="true"
         className={cn("size-6", className)}
@@ -42,26 +40,3 @@ const BrandMark = ({ className }: { className?: string }) => (
         />
     </svg>
 );
-
-interface BrandProps {
-    className?: string;
-    to?: string;
-}
-
-export const Brand = ({ className, to = "/" }: BrandProps) => (
-    <Link
-        aria-label="Badag home"
-        className={cn(
-            "text-foreground focus-visible:ring-ring flex items-center gap-2 rounded-md outline-none focus-visible:ring-2",
-            className
-        )}
-        to={to}
-    >
-        <BrandMark />
-        <span className="font-heading text-sm font-semibold tracking-tight">
-            Badag
-        </span>
-    </Link>
-);
-
-export { BrandMark };

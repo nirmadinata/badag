@@ -1,5 +1,5 @@
 import journal from './meta/_journal.json';
-import m0000 from './0000_late_ezekiel_stane.sql';
+import m0000 from './0000_outgoing_shatterstar.sql';
 
   export default {
     journal,

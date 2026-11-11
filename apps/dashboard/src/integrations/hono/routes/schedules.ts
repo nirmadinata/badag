@@ -1,7 +1,6 @@
 import { createRoute } from "@hono/zod-openapi";
 import type { OpenAPIHono } from "@hono/zod-openapi";
 
-import type { PublicApiEnv } from "../api-key";
 import {
     scheduleIdParamsSchema,
     scheduleListQuerySchema,
@@ -78,7 +77,7 @@ const deleteScheduleRoute = createRoute({
     },
 });
 
-export function registerScheduleRoutes(app: OpenAPIHono<PublicApiEnv>): void {
+export function registerScheduleRoutes(app: OpenAPIHono): void {
     app.openapi(listSchedulesRoute, notImplemented);
     app.openapi(getScheduleRoute, notImplemented);
     app.openapi(upsertScheduleRoute, notImplemented);

@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 
 import { OverviewPage } from "@/features/dashboard/components/overview-page";
 
-export const Route = createFileRoute("/dashboard/")({
+export const Route = createFileRoute("/_dashboard/")({
     head: () => ({
         meta: [
             { title: "Overview · Badag" },

@@ -1,7 +1,6 @@
 import { createRoute } from "@hono/zod-openapi";
 import type { OpenAPIHono } from "@hono/zod-openapi";
 
-import type { PublicApiEnv } from "../api-key";
 import {
     createDagBodySchema,
     createDagEdgeBodySchema,
@@ -216,7 +215,7 @@ const triggerDagRunRoute = createRoute({
     },
 });
 
-export function registerDagRoutes(app: OpenAPIHono<PublicApiEnv>): void {
+export function registerDagRoutes(app: OpenAPIHono): void {
     app.openapi(listDagsRoute, notImplemented);
     app.openapi(createDagRoute, notImplemented);
     app.openapi(getDagRoute, notImplemented);

@@ -2,15 +2,13 @@ import { OpenAPIHono } from "@hono/zod-openapi";
 import { Scalar } from "@scalar/hono-api-reference";
 import type { ErrorHandler } from "hono";
 
-import { apiKeyGuard } from "./api-key";
-import type { PublicApiEnv } from "./api-key";
 import { registerDagRoutes } from "./routes/dags";
 import { registerRunRoutes } from "./routes/runs";
 import { registerScheduleRoutes } from "./routes/schedules";
 import { registerSystemRoutes } from "./routes/system";
 import { NotImplementedError } from "./shared";
 
-export const publicApi = new OpenAPIHono<PublicApiEnv>({
+export const publicApi = new OpenAPIHono({
     // Validation runs before the handler. Convert Zod issues into the same
     // compact error contract every route documents.
     defaultHook: (result, c) => {
@@ -28,21 +26,13 @@ export const publicApi = new OpenAPIHono<PublicApiEnv>({
     },
 });
 
-// Health and the documentation are public; the guard is registered after
-// them so Hono's ordered dispatch skips it for these routes.
+// Health and the documentation are always reachable.
 registerSystemRoutes(publicApi);
 
 publicApi.get("/api/v1/docs", Scalar({ url: "/api/v1/docs/json" }));
 
-publicApi.openAPIRegistry.registerComponent("securitySchemes", "bearerAuth", {
-    type: "http",
-    scheme: "bearer",
-    description: "API key sent as a Bearer token.",
-});
-
 publicApi.doc31("/api/v1/docs/json", {
     openapi: "3.1.0",
-    security: [{ bearerAuth: [] }],
     info: {
         title: "Badag Public API",
         version: "1.0.0",
@@ -69,8 +59,6 @@ publicApi.doc31("/api/v1/docs/json", {
     ],
 });
 
-publicApi.use("/api/v1/*", apiKeyGuard);
-
 registerDagRoutes(publicApi);
 
 registerRunRoutes(publicApi);
@@ -87,7 +75,7 @@ publicApi.notFound((c) =>
     )
 );
 
-const handleError: ErrorHandler<PublicApiEnv> = (error, c) => {
+const handleError: ErrorHandler = (error, c) => {
     if (error instanceof NotImplementedError) {
         return c.json(
             {

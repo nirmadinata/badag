@@ -33,3 +33,15 @@ fn main() {
         Command::Completions { shell } => completions::print(shell),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use clap::CommandFactory;
+
+    use super::Cli;
+
+    #[test]
+    fn cli_definition_is_valid() {
+        Cli::command().debug_assert();
+    }
+}

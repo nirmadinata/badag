@@ -1,5 +1,7 @@
 mod completions;
+mod dev;
 
+use anyhow::Result;
 use clap::{Parser, Subcommand};
 
 use crate::completions::Shell;
@@ -27,11 +29,13 @@ enum Command {
     },
 }
 
-fn main() {
+fn main() -> Result<()> {
     match Cli::parse().command {
-        Command::Dev => println!("this is from dev command"),
+        Command::Dev => dev::run()?,
         Command::Completions { shell } => completions::print(shell),
     }
+
+    Ok(())
 }
 
 #[cfg(test)]

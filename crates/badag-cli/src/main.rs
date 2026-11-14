@@ -28,10 +28,9 @@ enum Command {
     },
 }
 
-#[tokio::main]
-async fn main() -> Result<()> {
+fn main() -> Result<()> {
     match Cli::parse().command {
-        Command::Dev => commands::dev::run().await?,
+        Command::Dev => commands::dev::run()?,
         Command::Completions { shell } => commands::completions::print(shell),
     }
 

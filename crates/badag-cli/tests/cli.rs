@@ -40,7 +40,7 @@ fn dev_lists_scripts_from_the_working_directory_dags_folder() {
     let dags = cwd.join("dags");
     fs::create_dir(&dags).unwrap();
     for name in ["zeta.ts", "alpha.mjs", "middle.js"] {
-        fs::write(dags.join(name), "export default {};\n").unwrap();
+        fs::write(dags.join(name), "export default createDAG(\"fixture\");\n").unwrap();
     }
     for name in ["readme.md", "logo.png"] {
         fs::write(dags.join(name), "").unwrap();
@@ -72,13 +72,18 @@ fn dev_reports_files_without_a_default_export() {
     let cwd = temp_dir("dev-invalid");
     let dags = cwd.join("dags");
     fs::create_dir(&dags).unwrap();
-    fs::write(dags.join("good.ts"), "export default {};\n").unwrap();
+    fs::write(
+        dags.join("good.ts"),
+        "export default createDAG(\"fixture\");\n",
+    )
+    .unwrap();
     fs::write(dags.join("missing.ts"), "export const value = 1;\n").unwrap();
     fs::write(dags.join("broken.ts"), "export default ;\n").unwrap();
+    fs::write(dags.join("not-dag.ts"), "export default 1;\n").unwrap();
 
     let output = badag_in(&cwd, &["dev"]);
 
-    let expected: String = ["broken.ts", "good.ts", "missing.ts"]
+    let expected: String = ["broken.ts", "good.ts", "missing.ts", "not-dag.ts"]
         .iter()
         .map(|name| format!("{}\n", Path::new("dags").join(name).display()))
         .collect();
@@ -91,6 +96,10 @@ fn dev_reports_files_without_a_default_export() {
     assert!(stderr.contains("broken.ts: failed to parse"), "{stderr}");
     assert!(
         stderr.contains("missing.ts: missing default export"),
+        "{stderr}"
+    );
+    assert!(
+        stderr.contains("not-dag.ts: default export is not a DAG"),
         "{stderr}"
     );
 

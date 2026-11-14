@@ -39,7 +39,10 @@ fn dev_lists_scripts_from_the_working_directory_dags_folder() {
     let cwd = temp_dir("dev");
     let dags = cwd.join("dags");
     fs::create_dir(&dags).unwrap();
-    for name in ["zeta.ts", "alpha.mjs", "middle.js", "readme.md", "logo.png"] {
+    for name in ["zeta.ts", "alpha.mjs", "middle.js"] {
+        fs::write(dags.join(name), "export default {};\n").unwrap();
+    }
+    for name in ["readme.md", "logo.png"] {
         fs::write(dags.join(name), "").unwrap();
     }
     fs::create_dir_all(cwd.join("other")).unwrap();
@@ -60,6 +63,36 @@ fn dev_lists_scripts_from_the_working_directory_dags_folder() {
     assert!(output.status.success());
     assert_eq!(stdout_of(&output), expected);
     assert!(output.stderr.is_empty());
+
+    fs::remove_dir_all(&cwd).unwrap();
+}
+
+#[test]
+fn dev_reports_files_without_a_default_export() {
+    let cwd = temp_dir("dev-invalid");
+    let dags = cwd.join("dags");
+    fs::create_dir(&dags).unwrap();
+    fs::write(dags.join("good.ts"), "export default {};\n").unwrap();
+    fs::write(dags.join("missing.ts"), "export const value = 1;\n").unwrap();
+    fs::write(dags.join("broken.ts"), "export default ;\n").unwrap();
+
+    let output = badag_in(&cwd, &["dev"]);
+
+    let expected: String = ["broken.ts", "good.ts", "missing.ts"]
+        .iter()
+        .map(|name| format!("{}\n", Path::new("dags").join(name).display()))
+        .collect();
+
+    assert_eq!(output.status.code(), Some(1));
+    assert_eq!(stdout_of(&output), expected);
+
+    let stderr = stderr_of(&output);
+    assert!(stderr.contains("invalid DAG modules"), "{stderr}");
+    assert!(stderr.contains("broken.ts: failed to parse"), "{stderr}");
+    assert!(
+        stderr.contains("missing.ts: missing default export"),
+        "{stderr}"
+    );
 
     fs::remove_dir_all(&cwd).unwrap();
 }

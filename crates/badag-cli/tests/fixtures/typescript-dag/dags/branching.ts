@@ -19,3 +19,5 @@ export const regional = createDAG("fixture-regional")
     .chain(vendorDrop, route)
     .chain(route, [us, eu])
     .chain([us, eu], publish);
+
+export default regional;

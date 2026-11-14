@@ -17,3 +17,5 @@ export const pricing = createDAG("fixture-pricing").chain(
     normalize,
     store
 );
+
+export default pricing;

@@ -17,3 +17,5 @@ export const scheduled = createDAG("fixture-scheduled").chain(
     extract,
     startPricing
 );
+
+export default scheduled;

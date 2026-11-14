@@ -1,10 +1,9 @@
-mod completions;
-mod dev;
+mod commands;
 
 use anyhow::Result;
 use clap::{Parser, Subcommand};
 
-use crate::completions::Shell;
+use crate::commands::completions::Shell;
 
 const BIN_NAME: &str = "badag";
 
@@ -21,7 +20,7 @@ enum Command {
     Dev,
 
     /// Print a shell completion script to stdout
-    #[command(after_long_help = completions::HELP)]
+    #[command(after_long_help = commands::completions::HELP)]
     Completions {
         /// Shell to generate the script for
         #[arg(value_enum)]
@@ -29,10 +28,11 @@ enum Command {
     },
 }
 
-fn main() -> Result<()> {
+#[tokio::main]
+async fn main() -> Result<()> {
     match Cli::parse().command {
-        Command::Dev => dev::run()?,
-        Command::Completions { shell } => completions::print(shell),
+        Command::Dev => commands::dev::run().await?,
+        Command::Completions { shell } => commands::completions::print(shell),
     }
 
     Ok(())

@@ -80,6 +80,22 @@ fn dev_fails_when_the_working_directory_has_no_dags_folder() {
 }
 
 #[test]
+fn dev_lists_the_typescript_dag_fixture() {
+    let fixture = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/typescript-dag");
+
+    let output = badag_in(&fixture, &["dev"]);
+
+    let expected: String = ["branching.ts", "linear.ts", "scheduled.ts"]
+        .iter()
+        .map(|name| format!("{}\n", Path::new("dags").join(name).display()))
+        .collect();
+
+    assert!(output.status.success());
+    assert_eq!(stdout_of(&output), expected);
+    assert!(output.stderr.is_empty());
+}
+
+#[test]
 fn each_shell_gets_its_own_completion_script() {
     let expected = [
         ("bash", "complete -F _badag"),

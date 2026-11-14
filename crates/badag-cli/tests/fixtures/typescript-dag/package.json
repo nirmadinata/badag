@@ -1,0 +1,14 @@
+{
+    "name": "typescript-dag",
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "typecheck": "tsc --noEmit"
+    },
+    "dependencies": {
+        "@badag/sdk": "link:../../../../../packages/sdk"
+    },
+    "devDependencies": {
+        "typescript": "7.1.0-beta"
+    }
+}

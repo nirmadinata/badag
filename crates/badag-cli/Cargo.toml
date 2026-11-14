@@ -1,0 +1,15 @@
+[package]
+name = "badag-cli"
+description = "Command-line interface for Badag"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+clap.workspace = true
+clap_complete.workspace = true
+clap_complete_nushell.workspace = true
+
+[[bin]]
+name = "badag"
+path = "src/main.rs"
